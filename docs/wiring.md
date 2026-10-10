@@ -49,15 +49,25 @@ The pump never runs with the valve open.
 ## Air path
 
 ```
-Pump ──► check valve (arrow toward cuff) ──► cuff tube A
+Pump ──► cuff tube A
                                             cuff tube B ──► vent valve ──► air
 ```
 
 If the cuff only has one tube, join pump and valve with a T-fitting (aquarium air-line T works):
 
 ```
-Pump ──► check valve ──► T ──► cuff
-                         └──► vent valve ──► air
+Pump ──► T ──► cuff
+                └──► vent valve ──► air
 ```
 
 Zip-tie every barb. Silicone tubing slides off under pressure otherwise.
+
+## Two legs (no electrical change)
+
+The relay has only 2 channels (pump, valve), so both cuffs share them. Daisy-chain through the bladders, no T fittings needed, because both tubes of a cuff open into the same bladder:
+
+```
+Pump ──► cuff 1 tube A     cuff 1 tube B ──► cuff 2 tube A     cuff 2 tube B ──► vent valve ──► air
+```
+
+Join cuff 1 tube B to cuff 2 tube A with a short piece of tubing or a coupler that fits the cuff connectors, zip-tied. The valve at the end vents both cuffs (leg 1 drains through leg 2, so it vents a little slower). Fill time roughly doubles, so re-time the preload with both cuffs on. The pump holds pressure on its own, so no check valve is used.

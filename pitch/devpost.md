@@ -18,17 +18,27 @@ squeezes; level off and it lets go. It's a **G-load haptic feedback trainer**, n
 create real acceleration, but it gives the same pressure cue a G-suit does, in time with your flight.
 
 ## How we built it
-- **Sim link:** a Python script reads G-load from FlightGear's built-in web server (or plays a scripted demo flight) and sends it to
-  an Arduino over USB serial, 20 times a second.
+- **Sim link:** a Python script reads G-load (`/accelerations/pilot-g`) from FlightGear's built-in web server (or plays a
+  scripted demo flight) and sends it to an Arduino over USB serial, 20 times a second. One script starts FlightGear and
+  the bridge together.
 - **Firmware:** the Arduino maps G to a target fill level and drives a 12V air pump and a vent solenoid through relays.
   With no pressure sensor, it estimates fill from pump and vent timing, re-zeroing each time G returns to 1.
-- **Hardware:** blood pressure cuff bladder, 12V mini pump, normally-open solenoid valve, check valve, 8xAA pack.
+- **Hardware:** blood pressure cuff with two tubes (pump on one, vent valve on the other, so no T fitting), 12V mini
+  pump, normally-open solenoid valve, 8xAA pack.
 - **Safety:** fails deflated on power loss, signal loss (0.5 s) or a board reset; pump run time capped; wearer kill switch.
 - The control logic is unit-tested on a laptop (dead-man timeout, pump cap, deadband, garbage serial input).
 
 ## Challenges we ran into
-[Fill in on the day. Candidates: confirming the pump inflates rather than sucks; the normally-open valve flipping
-the control logic; sourcing a T-fitting; cuff fill speed vs. how fast G changes; open-loop drift.]
+- **The valve works backwards from what we expected.** It's normally open: with no power it vents. That's a great
+  fail-safe (any power loss deflates the cuff), but it flipped the control logic. The valve has to be powered to
+  inflate and to hold pressure.
+- **Reading the right G number.** Our first pick of FlightGear property read 0.0 on a parked Cessna, which would have
+  kept the cuff empty forever. The bridge now prefers `/accelerations/pilot-g` and refuses any reading that isn't a
+  believable G value.
+- **Fill speed.** On a leg, our pump takes about 30 s to reach a firm squeeze, much slower than G changes in a hard
+  pull. **[What we did about it: preload, faster pump, or longer pulls in the demo.]**
+- **Plumbing.** We planned a T fitting, then found the cuff has two tubes: pump on one, vent valve on the other.
+- [Add anything else from the day.]
 
 ## Accomplishments we're proud of
 [e.g. it works end to end on stage; the safety design; built and tested in one day.]
@@ -51,12 +61,14 @@ python, pyserial, arduino, c++, flightgear
 | 12V mini air pump | [ ] |
 | Solenoid valve (normally open) | [ ] |
 | Silicone tubing | [ ] |
-| T-fittings / check valve | [ ] |
+| T-fittings / check valve (only if actually bought; neither is in the final build) | [ ] |
+| Stronger pump (if bought) | [ ] |
 | 8xAA holder | [ ] |
 | Zip ties, velcro, enclosure | [ ] |
-| Arduino Uno (already owned) | [ ] |
-| 4-channel relay module (already owned) | [ ] |
-| **Total** | **[ ]** |
+| **Total paid for this build** | **[ ]** |
+
+Already owned, not counted in the total: Arduino Uno (x2), 4-channel relay module, breadboard, jumpers, USB cables.
+Only use "under $150" if the receipt total supports it.
 
 ## Media checklist
 - [ ] 30 s video: cuff squeezing during a sim pull (record as soon as milestone 3 works)

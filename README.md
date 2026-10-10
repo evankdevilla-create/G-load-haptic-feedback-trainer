@@ -20,5 +20,6 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python bridge.py --demo --print   # no Arduino needed
 .venv/bin/python bridge.py --demo           # real Arduino, auto-detects the port
 .venv/bin/python bridge.py --live           # live G from FlightGear (start FlightGear with --httpd=5400)
+./run-live.sh                               # starts FlightGear and the bridge together
 ```
 Press ENTER for a 6 G spike, Ctrl+C to quit. Each run logs to `bridge/logs/`.

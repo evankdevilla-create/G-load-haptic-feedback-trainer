@@ -38,4 +38,6 @@ Tick items off here when done (edit only your own section).
 - [ ] Total the real receipts for the "under $150" claim (no guessed prices).
 - [ ] Record a backup video of the cuff squeezing during a pull, early.
 - [ ] Finish Devpost and pitch; rehearse twice with someone wearing it.
+  - Pitch and Devpost updated with 01's measured timings, 03's bridge changes, real challenges from today, and sourced comparison prices (Qubic QS-210, SimXperience G-Belt). Runbook live-mode steps now use `run-live.sh`.
+  - Still blank on purpose: receipt total, demo status, accomplishments. Rehearsals need the built cuff.
 - [ ] Extra, for the ElevenLabs track: spoken coaching from the bridge ("5 G, strain!", G-LOC warning). API key stays out of the public repo.

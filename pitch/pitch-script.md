@@ -4,7 +4,8 @@ Blanks in **[brackets]** need real numbers before you say them. Don't fill them 
 
 ## 1. Hook (15 s)
 "Pilots pulling hard turns get squeezed by their G-suit. Inflatable bladders on the legs push harder the more G they
-pull. Sim pilots never feel that. We built a cuff that does it, for **[total from receipts]** dollars."
+pull. Sim pilots never feel that. A home motion platform like Qubic's three-axis QS-210 costs €6,680 before tax.
+We built a cuff that gives you the G-suit squeeze for **[total from receipts]** dollars."
 
 ## 2. What it is, and what it isn't (15 s)
 "To be clear: this is a **G-load haptic feedback trainer**, not a G-force simulator. Real G needs real acceleration.
@@ -15,7 +16,8 @@ You can't fake that cheaply. What we *can* give you is the same pressure cue a G
 ## 3. Live demo (45 s)
 - Volunteer wears the cuff, kill switch in hand.
 - Start the flight (live FlightGear, or `--demo` if live is flaky; say which).
-- Call out the pulls: "Here's 5 G... easing off... now 7." Hit ENTER for an on-cue spike if needed.
+- Call out one long pull rather than quick ones: "Pulling 6 G... holding it... feel it build... and level off, it
+  lets go." The current pump takes about 30 s to reach a firm squeeze, so a quick pull only gives a light one.
 - Ask the volunteer what they feel.
 
 ## 4. How it works (20 s)
@@ -35,11 +37,13 @@ in a turn), spoken straining cues for anti-G training.
 | Question | Answer |
 |---|---|
 | Isn't this just a blood pressure cuff? | The cuff is off the shelf; the control loop, safety design and sim link are what we built. |
-| How is this different from sim-racing belt tensioners / G-seats? | Look these up before pitching so you can answer: they pull you into the seat; this mimics the G-suit leg squeeze specifically, at **[price]**. |
+| How is this different from sim-racing belt tensioners / G-seats? | Belt tensioners pull your harness tight to fake braking and cornering forces; SimXperience's G-Belt is listed at $999. G-seats move pads in the seat so it presses harder or softer on your back and thighs. Both fake being pushed by the seat and harness. Ours mimics the G-suit's leg bladder squeeze, the cue pilots actually get, at **[total from receipts]**. |
 | Why open loop? | No pressure sensor in the budget. Time-based estimate plus re-zero on every return to 1 G. A sensor is the first upgrade. |
-| How fast does it respond? | **[measured inflate time]** to full. Honest answer, plus what would speed it up (bigger pump, smaller bladder). |
+| How fast does it respond? | About 30 s from empty to a firm squeeze on the leg with our current pump, and about 5 s to vent. That's slow for a fast pull. Fixes, in order: a light preload so 1 G is already a gentle squeeze, a higher-flow pump, then an air reservoir. |
 | Is it safe? | Section 5. |
 
-## Claims to verify before saying them
-- "Commercial motion rigs cost $5k to $50k+": find one real product and price, or drop it.
+## Sources for the numbers above
+- Qubic 3DOF Motion Set QS-210: €6,680, tax and duty not included (QS-220: €8,880). https://qubicsystem.com/product/3dof-motion-set-qs-210-qs-220/
+- SimXperience G-Belt: listed at $999 (page also says "Not Available For Sale"). https://www.simxperience.com/en-us/products/accessories/g-beltactivebelttensioners.aspx
+- Cuff timings: 01's on-leg measurements, 2026-10-10 (`docs/CONTEXT.md`, Findings). Re-time if the stronger pump goes in.
 - Don't say it's what the Air Force trains with unless you have a source. "Same squeeze principle as a G-suit" is safe.

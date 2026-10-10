@@ -19,7 +19,8 @@ stalled (see Open items in `docs/CONTEXT.md`). If that isn't fixed by the cutoff
 and we say so.
 
 The scripted demo flight holds each pull for only about 3 s, but the cuff takes about 30 s to get firm, so a demo-mode
-squeeze will feel light until the holds are stretched (03) or the faster pump is in.
+squeeze will feel light until 03 slows the G ramp and 02 adds the preload. Team decision (01): no new pump for now,
+we demo with the current one.
 
 ## Setup (every time)
 

@@ -18,11 +18,20 @@ Tick items off here when done (edit only your own section).
 - [ ] Extra: cheap pressure sensor for closed-loop control and a pressure readout, only after open-loop works.
 
 ## 03 Bridge / sim
-- [ ] Test `--live` against real FlightGear in flight. Possible bug: the bridge picks `/fdm/jsbsim/accelerations/Nz` first and it read 0 on a parked c172p while `/accelerations/pilot-g` read 1. Confirm in flight which property is right and fix the pick order if needed.
-- [ ] Pick an aircraft that can pull 6+ G (the c172p tops out around 4 G, so a 6 G squeeze never happens). Check what is in the installed data.
-- [ ] One-command launcher: FlightGear flags (`--httpd=5400`, `--in-air`, etc.) plus the bridge.
+- [x] Test `--live` against real FlightGear in flight. Possible bug: the bridge picks `/fdm/jsbsim/accelerations/Nz` first and it read 0 on a parked c172p while `/accelerations/pilot-g` read 1. Confirm in flight which property is right and fix the pick order if needed.
+  - Root cause found and fixed. The bridge locked onto the **first property that returned any number**, and `Nz` returned a perfectly valid `0.0`, so it picked a dead reading and the cuff would never have inflated. Now `/accelerations/pilot-g` is tried first (it lives in FlightGear's core, so it works on JSBSim *and* YASim aircraft, and it reads ~1.0 at rest), and any reading that is not a believable load factor is refused with a printed reason. `Nz` is last resort and gets its negative-Z sign flipped.
+  - Covered by four scenarios in `fake_flightgear.py` (`normal`, `stuck-nz`, `jsbsim`, `yasim`); all four now pick `pilot-g`.
+  - **Still needs a human in the cockpit:** confirm G actually climbs during a real pull. `./run-live.sh --print` and watch the numbers. Can't be done from a desk.
+- [x] Pick an aircraft that can pull 6+ G (the c172p tops out around 4 G, so a 6 G squeeze never happens). Check what is in the installed data.
+  - `run-live.sh` defaults to `--aircraft f16` (a 9 G airframe). Override with `./run-live.sh --aircraft <id>`.
+  - Checked the installed data: **there is none.** No aircraft at all on this laptop, see Open items in CONTEXT.md. Blocker for any live run.
+- [x] One-command launcher: FlightGear flags (`--httpd=5400`, `--in-air`, etc.) plus the bridge.
+  - `bridge/run-live.sh`. Finds FlightGear, warns if `fgdata` or the aircraft is missing, starts the sim with `--httpd=5400 --altitude=10000 --vc=350` (`--altitude` implies `--in-air`), waits for the web server, then runs the bridge. One Ctrl+C stops both, and it never leaves the sim running.
 - [ ] Measure sim-to-cuff lag; tune smoothing and the G-to-pressure curve.
+  - Tooling is in: `bridge.py --step` plays a clean 1 G -> 6 G -> 1 G square wave and prints/logs the exact jump instant, so the cuff can be timed against it on video. Smoothing is now `--smoothing` instead of a hardcoded constant.
+  - The numbers themselves need the built cuff. The G-to-pressure curve lives in `firmware/` (02's), so 02 has to make that change, not me.
 - [ ] Extra: on-screen G readout during the demo.
+  - Deliberately not started: extras come after the demo works.
 
 ## 04 Integration / pitch
 - [ ] Full end-to-end run as soon as 01 and 02 have something working.

@@ -8,6 +8,8 @@ Tasks 1 to 5 written. **The sim is FlightGear.** `bridge/bridge.py` flags: `--de
 
 Fixed since the first pass: the G property auto-detect used to accept the first property that returned any number, so on a parked c172p it locked onto `/fdm/jsbsim/accelerations/Nz` reading `0.0` and the cuff would never have inflated. It now prefers `/accelerations/pilot-g` (FlightGear core, works on JSBSim and YASim aircraft) and refuses implausible readings with a printed reason. Four scenarios in `fake_flightgear.py` cover it.
 
+**New: `sim/`.** A first-person cockpit sim in React + TypeScript that flies a set route at set G and drives the cuff, written because the FlightGear data download never finished. It pretends to be FlightGear (`sim/server/g-server.mjs` serves the same JSON as `--httpd`), so `bridge.py --live` works against it unchanged. `sim/README.md` has the detail.
+
 Still to do, and both need hardware or a cockpit rather than more code:
 - Fly a real pull in FlightGear and confirm G climbs. **Blocked:** no `fgdata` installed on the laptop, see Open items in `docs/CONTEXT.md`.
 - Test against a real Arduino, then tune `DEMO_PROFILE` and `--smoothing` to 01's measured inflate time. `--step` is there to time the cuff.

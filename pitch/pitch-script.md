@@ -39,7 +39,7 @@ in a turn), spoken straining cues for anti-G training.
 | Isn't this just a blood pressure cuff? | The cuff is off the shelf; the control loop, safety design and sim link are what we built. |
 | How is this different from sim-racing belt tensioners / G-seats? | Belt tensioners pull your harness tight to fake braking and cornering forces; SimXperience's G-Belt is listed at $999. G-seats move pads in the seat so it presses harder or softer on your back and thighs. Both fake being pushed by the seat and harness. Ours mimics the G-suit's leg bladder squeeze, the cue pilots actually get, at **[total from receipts]**. |
 | Why open loop? | No pressure sensor in the budget. Time-based estimate plus re-zero on every return to 1 G. A sensor is the first upgrade. |
-| How fast does it respond? | About 30 s from empty to a firm squeeze on the leg with our current pump, and about 5 s to vent. That's slow for a fast pull. Fixes, in order: a light preload so 1 G is already a gentle squeeze, a higher-flow pump, then an air reservoir. |
+| How fast does it respond? | About 30 s from empty to a firm squeeze on the leg with our current pump, and about 5 s to vent. That's slow for a fast pull. Fixes, in order: a light preload so 1 G is already a gentle squeeze, then a higher-flow pump. |
 | Is it safe? | Section 5. |
 
 ## Sources for the numbers above

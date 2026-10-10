@@ -59,6 +59,10 @@ cd bridge
 The HUD shows `CUFF LINK LIVE` once it's posting. If the tab freezes or closes, the G server stops answering after
 0.4 s, the bridge stops sending, and the firmware vents. Pausing the sim holds a steady 1 G (cuff empties, link stays up).
 
+**Keep the sim window visible for the whole demo.** Put the terminal beside it, not on top. When the browser hides
+or stops drawing the tab, the sim stops flying and deliberately sends 1 G, so the squeeze drops out mid-pull. Safe,
+but it looks broken on stage. Also turn off display sleep and the screensaver.
+
 Say it honestly on stage: this is our own sim flying a scripted route, not a pilot flying FlightGear.
 
 ## Live mode with FlightGear
@@ -140,4 +144,5 @@ Say it honestly: "the live sim link is flaky, so here's the same cuff on a scrip
 - Cold-spare Arduino with the sketch already uploaded.
 - Spare tubing, zip ties, a second USB cable.
 - Spare laptop: 04's Mac has the bridge set up. `--demo --print` and `--live --print` against `fake_flightgear.py`
-  both pass there. FlightGear is installed there too (data still downloading). No Node.js yet, so it can't run `sim/`.
+  both pass there. Node.js 24 is installed, `sim/` tests pass, and sim -> bridge `--live --print` was checked end to
+  end (G followed the route). FlightGear is installed too; its data download is paused at about 430 MB.

@@ -42,13 +42,15 @@ Power: 8xAA pack (12V) feeds the pump and solenoid through the relay COM termina
 ## Findings so far (hardware, 2026-10-10)
 - Pump: INFLATES on the 8xAA pack, confirmed with the other end sealed. Do not dead-head it for long, a stalled pump overheats.
 - Solenoid: NORMALLY OPEN. Unpowered = vents. This is a good fail-safe (power loss deflates the cuff), but it flips the control logic: the solenoid must be ENERGIZED (closed) to inflate and hold pressure, and DE-ENERGIZED to vent. Holding pressure draws solenoid current the whole time.
-- T fitting: not yet in hand. Options: dual-tube cuff (pump on one tube, solenoid on the other), a DIY T from a pen barrel or pipette sealed with glue, or aquarium air-line T/Y fittings from a pet or hardware store.
-- Still unmeasured: inflate time empty to firm, vent time, max safe run time. 01 owns these, 02 needs them.
+- T fitting: none on hand, so one is being 3D printed: `hardware/t-fitting/t-fitting.stl`. It is a socket T for tubing with 3 mm OUTER diameter (tube pushes into each arm, seal with glue). Fallbacks: dual-tube cuff (pump on one tube, solenoid on the other), or a DIY T from a pen barrel sealed with glue.
+- Inflate time, free air: about 30 to 38 s from empty to fully inflated with the cuff NOT on a leg and the other tube sealed. Far slower than the 8 s placeholder in `trainer_logic.h`. A wrapped cuff on a leg should fill faster, so the real number still needs measuring on the leg.
+- Still unmeasured: inflate time wrapped on the leg, vent time, max safe run time. 01 owns these, 02 needs them.
+- If the leg time is still slow: keep a light preload baseline so 1 G is a few mmHg, use fatter tubing on the pump-to-cuff run (3 mm is a bottleneck), then a higher-flow pump (flow in L/min matters, not pressure; mind the 8xAA current limit), then a small air reservoir.
 
 ## Status (2026-10-10)
 Each agent updates only its own line. See `CLAUDE.md` for the rules.
 
-- **01 Hardware:** pump inflates, valve is normally open. Still to do: T-fitting or dual-tube cuff, inflate/vent/max-run timings, strain relief.
+- **01 Hardware:** pump inflates, valve is normally open. Free-air fill measured at 30 to 38 s (too slow, re-timing on the leg). T fitting for 3 mm OD tubing is being printed (`hardware/t-fitting/`). Still to do: plumb the full loop, inflate/vent/max-run timings on the leg, strain relief.
 - **03 Bridge:** `bridge/bridge.py` done. `--demo` (scripted flight, ENTER = 6 G spike, `--loop`), `--live` (FlightGear via `--httpd=5400`, auto-detects the G property; X-Plane also supported with `--sim xplane`), `--print`, auto-detect + reconnect, CSV logs. Tested against `bridge/fake_flightgear.py` and `fake_xplane.py`; not yet tested with real FlightGear or a real Arduino.
 - **02 Firmware:** `firmware/g_trainer/` written for the NO valve, with watchdog, dead-man, pump cap, deadband, re-zero, TEST/STOP/STATUS. Logic unit-tested on a laptop (20 checks pass). **Not yet uploaded to a real Uno. Timings are placeholders until 01 measures them.**
 - **04 Integration:** drafts ready (runbook, pitch, Devpost). Still to do: receipts total, live-sim cutoff time, backup video, rehearsals.

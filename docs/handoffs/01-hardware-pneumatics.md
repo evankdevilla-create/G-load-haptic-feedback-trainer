@@ -31,7 +31,8 @@ None. Event is today, so the pre-build question is moot.
 ## Findings (fill in as you go)
 - Pump inflates? YES (8xAA, sealed end). Don't dead-head it for long.
 - Solenoid type (NO/NC): NORMALLY OPEN. Unpowered = vents. Firmware already handles this.
-- Inflate time empty->firm: 
+- Inflate time empty->firm: free air (not on a leg, other tube sealed) was 30-38 s to fully inflated. On-leg time still to measure.
+- Tubing: 3 mm OUTER diameter. Printed socket T in `hardware/t-fitting/` (source `t-fitting.scad`, tweak `fit` if the tube is loose or won't go in).
 - Vent time: 
 - Notes/gotchas: T fitting not in hand yet. If the cuff has two tubes, skip the T: pump on one, valve on the other. Wiring and air path: `docs/wiring.md`.
 - Where the timings go: `firmware/g_trainer/trainer_logic.h` (`inflateMs`, `ventMs`, `pumpMaxRunMs`). Tell 03 too, so the demo profile matches.

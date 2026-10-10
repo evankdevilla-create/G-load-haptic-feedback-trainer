@@ -15,6 +15,29 @@
 **Judging starts 10:00 AM Sunday, Oct 11. Live-sim cutoff: 8:00 AM Sunday.** After 8:00, stop working on live mode
 and polish whatever works. If live isn't solid by then, the stage demo is `--demo --loop`, and we say so.
 
+## Timeline to judging (10:00 AM Sunday)
+
+Suggested times; the two fixed points are the 8:00 cutoff and 10:00 judging.
+Devpost submission deadline: **[__:__, check with the organizers]**.
+
+**Saturday night**
+- [ ] 02 uploads the sketch to the Uno, `TEST` works on the bench (milestone 2).
+- [ ] First end to end: `bridge.py --demo` into the real cuff, tube B pinched by hand until the valve adapter is
+      printed (milestone 3). **Record the backup video the moment it squeezes.**
+- [ ] Same again with `sim/` + `bridge.py --live` (milestone 4).
+- [ ] 03 lengthens the top-G holds, 02 adds the preload. Re-run and ask the wearer whether they can feel it.
+- [ ] 04: one timed run-through of the talk; total the receipts.
+- [ ] Before sleeping: everything pushed, laptops charging, fresh AAs set aside.
+
+**Sunday morning**
+- [ ] Two full rehearsals with someone wearing the cuff, stage setup exactly (sim window visible, kill switch in
+      the wearer's hand). Rehearse stepping down the fallback ladder once.
+- [ ] **8:00 cutoff.** No new features after this, only fixes to what you rehearsed.
+- [ ] 8:00 to 9:30: finish the Devpost (receipt total, honest demo status, video, photos, G graph) and pack spares.
+- [ ] 9:30: set up at the table, `--print` check, short `TEST` on the cuff.
+
+## Before the demo
+
 Live mode no longer waits on FlightGear: 03's cockpit sim in `sim/` stands in for it and needs no big download (see
 below). FlightGear stays as a second option once its data is on a laptop.
 

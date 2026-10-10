@@ -79,4 +79,6 @@ Only use "under $150" if the receipt total supports it.
 - [ ] 30 s video: cuff squeezing during a sim pull (record as soon as milestone 3 works)
 - [ ] Photo of the hardware laid out
 - [ ] Photo of someone wearing it
-- [ ] G-vs-time graph from a `bridge/logs/` CSV (open in Numbers → line chart)
+- [x] G-vs-time graph: `pitch/g-vs-time-sim-route.png`, one 98 s loop of the sim's route as logged by the bridge.
+  It shows the G command, not cuff pressure (no cuff was attached). Caption it that way. Once there's a real run with
+  the cuff, remake it from that log with `pitch/make_g_graph.py` (usage at the top of the script).

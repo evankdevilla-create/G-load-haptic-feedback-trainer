@@ -72,7 +72,7 @@ python, pyserial, arduino, c++, react, typescript, three.js, node.js, vite, flig
 | Zip ties, velcro, enclosure | [ ] |
 | **Total paid for this build** | **[ ]** |
 
-Already owned, not counted in the total: Arduino Uno (x2), 4-channel relay module, breadboard, jumpers, USB cables.
+Already owned, not counted in the total: Arduino Uno (x2), 2-channel relay module, breadboard, jumpers, USB cables.
 Only use "under $150" if the receipt total supports it.
 
 ## Media checklist

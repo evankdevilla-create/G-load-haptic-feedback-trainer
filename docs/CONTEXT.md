@@ -85,7 +85,7 @@ Firmware vents on serial loss, hard pump time cap, never exceed a firm but comfo
 - Flyback diodes (1N400x) across pump and valve if available. See `docs/wiring.md`.
 
 ## Software notes
-- `pyserial` for the Arduino. FlightGear: the bridge reads JSON from `http://localhost:5400/json/<property>`, trying `/fdm/jsbsim/accelerations/Nz`, then `/accelerations/pilot-gdamped`, then `/accelerations/pilot-g`. Check in a browser that level flight reads ~1.0; override with `--fg-prop`.
+- `pyserial` for the Arduino. FlightGear: the bridge reads JSON from `http://localhost:5400/json/<property>`, trying `/accelerations/pilot-g` first, then `/accelerations/pilot-gdamped`, then `/fdm/jsbsim/accelerations/Nz` as a last resort. **This order was reversed earlier today** - `Nz` used to be first and it read a valid `0.0` on the parked c172p, so the bridge locked onto a dead reading and the cuff would never have inflated. `pilot-g` is FlightGear core, so it works on JSBSim and YASim aircraft alike. The bridge now also refuses any reading that is not a believable load factor and prints why. Check in a browser that level flight reads ~1.0; override with `--fg-prop`. `sim/` serves the same two `pilot-g` properties, which is how it stands in for FlightGear.
 - The Uno reboots when the serial port opens; the bridge waits 2 s after connecting.
 - Light low-pass smoothing on G, but not so much that the cuff feels laggy.
 - Log G to CSV for debugging and a pitch graph.

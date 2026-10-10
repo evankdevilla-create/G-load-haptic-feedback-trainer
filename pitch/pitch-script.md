@@ -15,13 +15,14 @@ You can't fake that cheaply. What we *can* give you is the same pressure cue a G
 
 ## 3. Live demo (45 s)
 - Volunteer wears the cuff, kill switch in hand.
-- Start the flight (live FlightGear, or `--demo` if live is flaky; say which).
+- Start the flight: our cockpit sim flying its set route (or `--demo` if it's flaky; say which). It's a scripted
+  route, not someone flying, so say that too: "it flies the same G every run, so you feel exactly what we planned."
 - Call out one long pull rather than quick ones: "Pulling 6 G... holding it... feel it build... and level off, it
   lets go." The current pump takes about 30 s to reach a firm squeeze, so a quick pull only gives a light one.
 - Ask the volunteer what they feel.
 
 ## 4. How it works (20 s)
-"The sim's G-load goes to a Python script on the laptop, then over USB to an Arduino 20 times a second. The Arduino
+"We wrote our own cockpit sim that flies a set route at set G. Its G-load goes to a Python script on the laptop, then over USB to an Arduino 20 times a second. The Arduino
 switches a 12-volt pump and a vent valve. With no pressure sensor, it estimates how full the cuff is from pump and
 vent timing, and re-zeroes every time you level off."
 

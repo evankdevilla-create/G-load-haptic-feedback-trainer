@@ -4,23 +4,24 @@
 
 - [ ] **1. Cuff alone.** Pump inflates and valve vents from the 8xAA pack, no Arduino. Inflate and vent times measured.
   Mostly done: about 30 s to a firm squeeze on the leg, about 5 s to vent with tube B open to air. Still to do:
-  re-time the vent through the valve once the adapter is printed, and re-time everything if the stronger pump arrives.
+  re-time the vent through the valve once the adapter is printed. No new pump for now (01's decision).
 - [ ] **2. Firmware alone.** Sketch uploaded, real timings entered, `TEST` works in Serial Monitor.
   Sketch is written and its logic tests pass on a laptop. Not uploaded to a real Uno yet.
 - [ ] **3. End to end, demo mode.** `bridge.py --demo` squeezes the real cuff. **Record the backup video now.**
-- [ ] **4. Live sim.** `bridge.py --live` with FlightGear. If it isn't working by the cutoff time, demo mode is the plan.
+- [ ] **4. Live sim.** `bridge.py --live` with 03's cockpit sim (`sim/`) or FlightGear. If it isn't working by the
+  cutoff time, demo mode is the plan.
 - [ ] **5. Rehearse twice** with someone wearing the cuff, full pitch, timed.
 
-Live-sim cutoff time: **[__:__]**. Suggested: 2 hours before judging. After it, stop working on live mode and
-polish the demo.
+**Judging starts 10:00 AM Sunday, Oct 11. Live-sim cutoff: 8:00 AM Sunday.** After 8:00, stop working on live mode
+and polish whatever works. If live isn't solid by then, the stage demo is `--demo --loop`, and we say so.
 
-Live mode is blocked right now: FlightGear on the demo laptop has no aircraft installed because its data download
-stalled (see Open items in `docs/CONTEXT.md`). If that isn't fixed by the cutoff, the stage demo is `--demo --loop`,
-and we say so.
+Live mode no longer waits on FlightGear: 03's cockpit sim in `sim/` stands in for it and needs no big download (see
+below). FlightGear stays as a second option once its data is on a laptop.
 
-The scripted demo flight holds each pull for only about 3 s, but the cuff takes about 30 s to get firm, so a demo-mode
-squeeze will feel light until 03 slows the G ramp and 02 adds the preload. Team decision (01): no new pump for now,
-we demo with the current one.
+Both the scripted demo flight (about 3 s pulls) and the cockpit sim's route (6 to 8 s turns, back to 1 G in between)
+are far shorter than the cuff's ~30 s fill, and the firmware empties the cuff every time G drops back to 1. So today
+the squeeze peaks at roughly a quarter of full, even at 6 G. It will feel light until 03 slows the G onset and 02 adds
+the preload. Team decision (01): no new pump for now, we demo with the current one.
 
 ## Setup (every time)
 
@@ -38,6 +39,27 @@ we demo with the current one.
    .venv/bin/python bridge.py --demo --loop     # or --live
    ```
 6. Press ENTER for a spike whenever you want a squeeze on cue.
+
+## Live mode with the cockpit sim (`sim/`, preferred)
+
+03's React cockpit sim flies a set route at set G (1 G building to 6 G, 98 s, loops). Its little server answers like
+FlightGear's web server, so the bridge runs unchanged. Needs Node.js.
+
+```bash
+cd sim
+npm install        # first time only
+npm run dev        # sim on :5173, G server on :5400
+```
+Open the URL it prints. Then, in a second terminal:
+```bash
+cd bridge
+.venv/bin/python bridge.py --live --print   # check first: G lines follow the route
+.venv/bin/python bridge.py --live           # for real, with the Arduino
+```
+The HUD shows `CUFF LINK LIVE` once it's posting. If the tab freezes or closes, the G server stops answering after
+0.4 s, the bridge stops sending, and the firmware vents. Pausing the sim holds a steady 1 G (cuff empties, link stays up).
+
+Say it honestly on stage: this is our own sim flying a scripted route, not a pilot flying FlightGear.
 
 ## Live mode with FlightGear
 
@@ -82,7 +104,7 @@ X-Plane also works (`--live --sim xplane`, no X-Plane setup needed; test with `f
 
 ## Fallback ladder (if something breaks on stage, step down one rung)
 
-1. Live FlightGear
+1. Live: cockpit sim (`sim/`), or FlightGear
 2. `--demo --loop` (scripted flight + ENTER spikes)
 3. Serial Monitor, type `TEST` (proves the hardware alone)
 4. The backup video
@@ -118,4 +140,4 @@ Say it honestly: "the live sim link is flaky, so here's the same cuff on a scrip
 - Cold-spare Arduino with the sketch already uploaded.
 - Spare tubing, zip ties, a second USB cable.
 - Spare laptop: 04's Mac has the bridge set up. `--demo --print` and `--live --print` against `fake_flightgear.py`
-  both pass there. It has no FlightGear, so it covers fallback rung 2 (demo mode) only.
+  both pass there. FlightGear is installed there too (data still downloading). No Node.js yet, so it can't run `sim/`.

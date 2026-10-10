@@ -39,8 +39,9 @@ in a turn), spoken straining cues for anti-G training.
 |---|---|
 | Isn't this just a blood pressure cuff? | The cuff is off the shelf; the control loop, safety design and sim link are what we built. |
 | How is this different from sim-racing belt tensioners / G-seats? | Belt tensioners pull your harness tight to fake braking and cornering forces; SimXperience's G-Belt is listed at $999. G-seats move pads in the seat so it presses harder or softer on your back and thighs. Both fake being pushed by the seat and harness. Ours mimics the G-suit's leg bladder squeeze, the cue pilots actually get, at **[total from receipts]**. |
+| Why did you write your own sim instead of using FlightGear? | FlightGear's ~2 GB data download stalled on our demo laptop, so we had a sim with no aircraft. Ours flies a fixed route at fixed G, so the squeeze is the same every run and we can demo it reliably. The bridge still works with FlightGear; it can't tell the two apart. |
 | Why open loop? | No pressure sensor in the budget. Time-based estimate plus re-zero on every return to 1 G. A sensor is the first upgrade. |
-| How fast does it respond? | About 30 s from empty to a firm squeeze on the leg with our current pump, and about 5 s to vent. That's slow for a fast pull. Fixes, in order: a light preload so 1 G is already a gentle squeeze, then a higher-flow pump. |
+| How fast does it respond? | Give the real number: about 30 s to fill from empty, about 5 s to vent. Slower than a real G onset. We decided to keep a small low-flow pump and turned down high-power ones (150 psi tire inflators, 10 A+), because a low-flow pump can't slam pressure onto a leg if something fails. **[Only once 02's preload works:]** we preload the cuff to a comfortable baseline, so a pull only tops it up. Next step: a stronger pump plus a pressure sensor. Don't say the small pump was the plan from the start; we looked for a stronger one and couldn't buy it. |
 | Is it safe? | Section 5. |
 
 ## Sources for the numbers above

@@ -88,6 +88,8 @@ Firmware vents on serial loss, hard pump time cap, never exceed a firm but comfo
 - Log G to CSV for debugging and a pitch graph.
 
 ## Open items
+- Task split per role: `docs/TASKS.md`.
+- 03: link test on 2026-10-10 against real FlightGear (c172p, parked): bridge connected over `--httpd=5400` and streamed, but it picked `Nz`, which read 0, while `/accelerations/pilot-g` and `pilot-gdamped` read 1. Verify in actual flight which is right. Also the c172p can't pull 6+ G, so choose an aircraft that can for the demo.
 - Stronger pump (teammates buying, must be local, event is today): 12V DC positive-pressure air pump (not a vacuum pump), about 3 to 6 L/min (flow matters, not pressure; anything over about 300 mmHg is enough), under about 2 A running current (8xAA pack sags with more), outlet barb matching the cuff tubes plus spare connectors. No 12V tire inflators, too strong. Keep the kill switch and the pump cap, and 01 re-times max safe run time with the new pump.
 - Event day is today, so the pre-build policy email (team@hackphs.tech) is moot.
 - Record a backup video of the cuff squeezing during a sim pull as early as possible.

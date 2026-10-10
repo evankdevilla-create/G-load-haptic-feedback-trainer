@@ -28,7 +28,7 @@ Hardware alone first (bench test), then telemetry software, then integration. In
 ## Architecture
 ```
 sim (FlightGear) -> Python bridge (laptop) -> USB serial -> Arduino Uno
-   -> 4-ch relay -> 12V pump + vent solenoid -> thigh cuff
+   -> 2-ch relay -> 12V pump + vent solenoid -> thigh cuff
 ```
 Power: 8xAA pack (12V) feeds the pump and solenoid through the relay COM terminals. The Arduino runs from USB. Never power loads through the Arduino.
 
@@ -68,11 +68,11 @@ Each agent updates only its own line. See `CLAUDE.md` for the rules.
 - Every return to 1 G vents all the way, which resets estimate drift.
 - Watchdog timer resets a hung board; a reset leaves all relays off = vented.
 - Relay boards are often active-low. Idle state of every pin must be "off" before setup() finishes.
-- Default pins: relay IN1 = pump (pin 7), IN2 = solenoid (pin 8). IN3/IN4 reserved for leg 2.
+- Default pins: relay IN1 = pump (pin 7), IN2 = solenoid (pin 8). The relay is a 2-CHANNEL board (not 4), so there are no spare channels. A second leg can't get its own valve: both cuffs would share the one pump and the one vent valve.
 
 ## Parts
 Bought or planned: BP cuff + bladder (thigh), 12V mini air pump, solenoid valve, silicone tubing, T fittings, check valve, 8xAA holder, zip ties, velcro, small enclosure.
-Already owned: 2x Arduino Uno (one is a cold spare), breadboard, jumpers, USB cables, 4-channel relay (5V logic, handles 12V loads), servo(s) of unknown torque, AA/AAA batteries.
+Already owned: 2x Arduino Uno (one is a cold spare), breadboard, jumpers, USB cables, 2-channel relay (5V logic, handles 12V loads), servo(s) of unknown torque, AA/AAA batteries.
 Use AAs, not a 9V (9V sags under pump load).
 
 ## Scope
@@ -101,6 +101,7 @@ Firmware vents on serial loss, hard pump time cap, never exceed a firm but comfo
 - 02, from 03: the G-to-pressure curve (1 G = empty, ~6 G = full) lives in `firmware/g_trainer/trainer_logic.h`, which is yours. Once 01's real timings are in and the cuff is built, that curve is the knob for how hard the squeeze ramps. `bridge.py --step` gives you a clean 1 G -> 6 G -> 1 G square wave with the jump instant printed, so you can time the response on video instead of guessing.
 - PROPOSED (01, not final): pre-compress the cuff(s) to a comfortable baseline as a setup step ("arm"), then G adds squeeze on top and stays capped below firm for safety. This shortens the pump-limited fill because only the top-up is slow. 02: preload level instead of empty at 1 G; the "vent fully on every return to 1 G" re-zero would drop to the preload level instead; add an arm step (vent, then inflate to the preload) and keep `pumpMaxRunMs` lower than the current 35 s (01 will set the number after testing comfort on the leg). 01 to test: how long the NO valve coil can stay energized holding the preload (needs a 10 to 15 min heat test, not 3 to 5), and a comfortable preload time. 04: pitch wording should say the squeeze is deliberately capped for safety and preloaded to a comfortable baseline, with no claim that it matches real G-suit pressures. A second cuff for the other leg is under discussion, not committed.
 - PITCH GUIDANCE (01, for 04): do NOT say the weak pump was chosen on purpose from the start, that is not true (a stronger pump was looked for and could not be bought). A true framing: we decided to KEEP a small low-flow pump and reject high-power pumps (tire inflators, 150 psi, 10 A+) for safety, because a low-flow pump cannot slam pressure onto a leg if something fails. Speed is handled by preloading the cuffs to a comfortable baseline so a pull only adds a small top-up. State the trade-off plainly: the squeeze is slower than a real G onset (about 30 s to fully fill from empty); a stronger pump plus a pressure sensor is the next step. If a judge asks about the fill time, give the real number.
+- PRELOAD NUMBER (01): about 25 s of pump time as the baseline (the on-leg time to fully firm is about 30 s, so that leaves only about 5 s of top-up and a small squeeze range on G). The pump cap must stay above the pump time needed for the highest squeeze 01 wants, about 25% over it; 01 does not want the squeeze limited below firm by the cap. 02: set the preload to 25 s as a starting value, tune on the leg.
 - DECISION (01, 2026-10-10): a second/stronger pump can't be bought yet, so we proceed with the current pump (about 30 s fill on the leg, holds pressure). 02: add a preload so 1 G is a light squeeze. 03: stretch `DEMO_PROFILE` / slow the G onset so a slow fill still tracks the plane. Revisit a pump swap or a second pump in parallel only if time allows.
 - WARNING on the pump candidate (01's view, not yet agreed): a 150 PSI 12V car tire inflator (the AstroAI one from Walmart) is the wrong kind of pump. It plugs into a car 12V socket and typically draws about 10 A or more (check the listing), which the 8xAA pack and a 10 A relay can't handle, and it can push far past a safe leg pressure (about 2 to 3 psi) in a second or two. It would need a real 12V source, a heavier relay, and a pressure relief or regulator on the cuff line. Prefer a small 12V pump under about 2 A, or a 12V air-mattress pump if it can reach 2 to 3 psi. Discuss before buying.
 - Stronger pump (teammates buying, must be local, event is today): 12V DC positive-pressure air pump (not a vacuum pump), about 3 to 6 L/min (flow matters, not pressure; anything over about 300 mmHg is enough), under about 2 A running current (8xAA pack sags with more), outlet barb matching the cuff tubes plus spare connectors. No 12V tire inflators, too strong. Keep the kill switch and the pump cap, and 01 re-times max safe run time with the new pump.

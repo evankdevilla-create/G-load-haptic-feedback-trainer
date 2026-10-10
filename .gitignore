@@ -4,3 +4,5 @@ __pycache__/
 .DS_Store
 bridge/logs/
 firmware/test/test_logic
+sim/node_modules/
+sim/dist/

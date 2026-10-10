@@ -1,0 +1,33 @@
+{
+  "name": "gload-sim",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "First-person cockpit sim that flies a set route at set G and drives the cuff through the bridge",
+  "scripts": {
+    "dev": "concurrently -n sim,gserver -c cyan,magenta \"vite\" \"node server/g-server.mjs\"",
+    "sim": "vite",
+    "gserver": "node server/g-server.mjs",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.0.0",
+    "@react-three/fiber": "^9.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/three": "^0.180.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^9.0.0",
+    "typescript": "^5.6.0",
+    "vite": "^7.0.0",
+    "vitest": "^3.0.0"
+  }
+}

@@ -50,14 +50,14 @@ The pump never runs with the valve open.
 
 ```
 Pump ──► cuff tube A
-                                            cuff tube B ──► vent valve ──► air
+         cuff tube B ──► vent valve ──► air
 ```
 
 If the cuff only has one tube, join pump and valve with a T-fitting (aquarium air-line T works):
 
 ```
 Pump ──► T ──► cuff
-                └──► vent valve ──► air
+          └──► vent valve ──► air
 ```
 
 Zip-tie every barb. Silicone tubing slides off under pressure otherwise.

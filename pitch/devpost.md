@@ -36,7 +36,8 @@ create real acceleration, but it gives the same pressure cue a G-suit does, in t
   kept the cuff empty forever. The bridge now prefers `/accelerations/pilot-g` and refuses any reading that isn't a
   believable G value.
 - **Fill speed.** On a leg, our pump takes about 30 s to reach a firm squeeze, much slower than G changes in a hard
-  pull. **[What we did about it: preload, faster pump, or longer pulls in the demo.]**
+  pull. **[What we did about it. Plan: keep the current pump, add a preload so 1 G is already a light squeeze, and
+  slow the G onset in the demo. Write it here only once 02 and 03 have it working.]**
 - **Plumbing.** We planned a T fitting, then found the cuff has two tubes: pump on one, vent valve on the other.
 - [Add anything else from the day.]
 

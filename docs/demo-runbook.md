@@ -116,3 +116,5 @@ Say it honestly: "the live sim link is flaky, so here's the same cuff on a scrip
 - Spare AAs (pump + valve current drains them; holding pressure keeps the valve powered).
 - Cold-spare Arduino with the sketch already uploaded.
 - Spare tubing, zip ties, a second USB cable.
+- Spare laptop: 04's Mac has the bridge set up. `--demo --print` and `--live --print` against `fake_flightgear.py`
+  both pass there. It has no FlightGear, so it covers fallback rung 2 (demo mode) only.

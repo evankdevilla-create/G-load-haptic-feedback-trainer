@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import type { FlightState } from "../flight/types";
+import { useFrameValue } from "./useFrameValue";
 
 /** Must match the 3D camera in scene/Scene.tsx (vertical field of view, degrees). */
 export const CAMERA_FOV_DEG = 72;
@@ -75,8 +76,9 @@ function useViewportSize(): { w: number; h: number } {
   return size;
 }
 
-export function Horizon({ state }: { state: FlightState }) {
+export function Horizon({ state: sampled, getState }: { state: FlightState; getState?: () => FlightState }) {
   const { w, h } = useViewportSize();
+  const state = useFrameValue(getState ?? (() => sampled));
   const roll = state.phi * DEG;
   const pitch = (state.gamma + state.alpha) * DEG;
   const layers: Array<[string, number, string]> = [

@@ -1,33 +1,9 @@
-/** What is drawn over the 3D view: the G readout, the controls, and nothing else. */
+/** What is drawn over the 3D view: the instrument cluster, the controls, and nothing else. */
 
 import type { FlightMode, FlightState } from "../flight/types";
-import { GMeter } from "./GMeter";
+import { InstrumentCluster } from "./instruments/InstrumentCluster";
 import { Horizon } from "./Horizon";
 import { KeyHints } from "./ManualPanel";
-
-const KNOTS_PER_MS = 1.944;
-const FEET_PER_M = 3.281;
-const pad = (n: number, w: number) => String(Math.round(n)).padStart(w, "0");
-
-function FlightStrip({ state }: { state: FlightState }) {
-  const hdg = (((state.psi * 180) / Math.PI) % 360 + 360) % 360;
-  const items: Array<[string, string, string]> = [
-    ["SPD", pad(state.v * KNOTS_PER_MS, 3), "kt"],
-    ["ALT", Math.round(state.pos.y * FEET_PER_M).toLocaleString("en-US"), "ft"],
-    ["HDG", pad(hdg % 360, 3), "\u00b0"],
-  ];
-  return (
-    <div className="panel flightstrip" role="group" aria-label="Flight data">
-      {items.map(([k, v, u]) => (
-        <div key={k}>
-          <span className="fs-k">{k}</span>
-          <span className="fs-v">{v}</span>
-          <span className="fs-u">{u}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 export function Hud({
   state,
@@ -38,6 +14,7 @@ export function Hud({
   onRestart,
   onToggleCuff,
   view = "chase",
+  getRenderState,
 }: {
   state: FlightState;
   running: boolean;
@@ -47,16 +24,22 @@ export function Hud({
   onRestart: () => void;
   onToggleCuff: () => void;
   view?: "cockpit" | "chase";
+  /** Per-frame interpolated state for the cockpit horizon (smooth, unlike the 20 Hz `state`). */
+  getRenderState?: () => FlightState;
 }) {
   return (
     <div className="overlay">
-      {view === "cockpit" && <Horizon state={state} />}
+      {view === "cockpit" && <Horizon state={state} getState={getRenderState} />}
+      {state.crashed && (
+        <div className="panel crash-banner" role="alert">
+          <strong>CRASHED</strong>
+          <span>
+            Press <kbd>R</kbd> to restart. The cuff stays at its baseline.
+          </span>
+        </div>
+      )}
       <KeyHints mode={mode} />
-      <FlightStrip state={state} />
-      <div className="panel gpanel">
-        <GMeter g={state.g} commanded={state.gCommanded} limited={state.gLimited} />
-        <p className="honest-note">Haptic cue = preload + G squeeze. Not a G-force simulator.</p>
-      </div>
+      <InstrumentCluster state={state} getState={getRenderState} />
       <div className="panel controls interactive">
         <button onClick={onToggleRunning}>{running ? "Pause" : "Fly"}</button>
         <button onClick={onRestart}>Restart</button>

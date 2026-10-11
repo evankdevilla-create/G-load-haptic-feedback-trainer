@@ -100,138 +100,247 @@ kbd {
   flex-wrap: wrap;
 }
 
-/* --- G readout, bottom centre ------------------------------------------- */
-.gpanel {
+/* --- instrument cluster, bottom centre ------------------------------------ */
+/* Black faces, white marks, one amber accent. Flat: no glow, no blur, no shadow. */
+:root {
+  --ring: min(19vh, 150px, calc((100vw - 640px) / 4.25));
+  --ins-mark: #e6e8ea;
+  --ins-face: #050607;
+  --ins-sky: #2c5a86;
+  --ins-ground: #5a3d22;
+}
+
+.instruments {
   bottom: var(--s2);
   left: 50%;
   transform: translateX(-50%);
-  width: min(560px, calc(100vw - 560px));
-  padding: 20px 24px 16px;
+  padding: var(--s1) var(--s2) var(--s1);
+  width: max-content;
+  max-width: calc(100vw - 32px);
 }
 
-.gvalue {
-  font-size: 88px;
-  letter-spacing: -0.04em;
-  line-height: 1;
+.ins-grid {
+  display: grid;
+  grid-template-columns: calc(var(--ring) * 1.25) repeat(3, var(--ring));
+  gap: var(--s1);
+  align-items: end;
+}
+
+.ins-grid figure {
+  margin: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.ins-grid svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+}
+
+.ins-grid figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 8px;
+  min-height: 2.6em;
+  align-content: flex-start;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ins-grid figcaption b {
+  color: var(--text);
   font-weight: 600;
+}
+
+.ins-face {
+  fill: var(--ins-face);
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.ins-minor,
+.ins-major,
+.adi-rung,
+.adi-horizon {
+  fill: none;
+  stroke: var(--ins-mark);
+  stroke-linecap: butt;
+}
+
+.ins-minor {
+  stroke-width: 0.7;
+  opacity: 0.8;
+}
+
+.ins-major {
+  stroke-width: 1.2;
+}
+
+.ins-lab {
+  fill: var(--ins-mark);
+  font-size: 6.6px;
   font-variant-numeric: tabular-nums;
 }
 
-.gvalue[data-over="true"] {
-  color: var(--accent);
+.ins-lab-accent,
+.ins-name {
+  fill: var(--accent);
 }
 
-.gvalue[data-zone="extreme"] {
-  color: var(--zone-hot);
+.ins-name {
+  fill: var(--muted);
+  letter-spacing: 0.08em;
 }
 
-.gvalue {
-  transition: color 0.2s ease-out, transform 0.2s ease-out;
-  transform-origin: left center;
+.ins-num {
+  fill: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
-.gvalue[data-zone="extreme"] {
-  transform: scale(1.06);
+.ins-num[data-zone="full"] {
+  fill: var(--accent);
 }
 
-.gunit {
-  font-size: 24px;
-  letter-spacing: 0;
-  color: var(--muted);
-  margin-left: 6px;
+.ins-num[data-zone="extreme"] {
+  fill: var(--zone-hot);
 }
 
-.gbar {
-  position: relative;
-  height: 14px;
-  margin-top: var(--s2);
-  background: #0c0e10;
-  border: 1px solid var(--line);
+.ins-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  opacity: 0.9;
 }
 
-.gbar-fill {
-  position: absolute;
-  inset: 0;
-  background: var(--text);
-  transform-origin: left;
+.ins-red {
+  fill: none;
+  stroke: var(--alarm);
+  stroke-width: 2.6;
 }
 
-.gbar-fill[data-zone="idle"] {
-  background: var(--muted);
+.ins-full-tick {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.8;
 }
 
-.gbar-fill[data-zone="ramp"] {
-  background: var(--zone-base);
+.ins-needle,
+.ins-needle-short {
+  fill: var(--ins-mark);
+  stroke: var(--ins-face);
+  stroke-width: 0.6;
 }
 
-.gbar-fill[data-zone="full"] {
-  background: var(--accent);
+.ins-needle-short {
+  fill: var(--accent);
 }
 
-.gbar-fill[data-zone="extreme"] {
-  background: var(--zone-hot);
+.ins-hub {
+  fill: var(--ins-face);
+  stroke: var(--ins-mark);
+  stroke-width: 1;
 }
 
-/* one notch per G, drawn over the fill so the scale reads as steps */
-.gbar::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    90deg,
-    transparent 0,
-    transparent calc(9.0909% - 2px),
-    var(--panel) calc(9.0909% - 2px),
-    var(--panel) 9.0909%
-  );
-  pointer-events: none;
+.ins-mark-max {
+  fill: var(--ins-mark);
 }
 
-.gbar-full,
-.gbar-cmd {
-  position: absolute;
-  top: -4px;
-  bottom: -4px;
-  width: 2px;
-  margin-left: -1px;
+.ins-mark-min {
+  fill: var(--ins-face);
+  stroke: var(--ins-mark);
+  stroke-width: 1;
 }
 
-.gbar-full {
-  background: var(--accent);
+.ins-window {
+  fill: var(--ins-face);
+  stroke: var(--ins-mark);
+  stroke-width: 0.8;
 }
 
-.gbar-cmd {
-  background: var(--muted);
+.adi-sky {
+  fill: var(--ins-sky);
 }
 
-.gticks {
-  position: relative;
-  height: 16px;
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 11px;
+.adi-ground {
+  fill: var(--ins-ground);
 }
 
-.gticks span {
-  position: absolute;
-  transform: translateX(-50%);
+.adi-rung {
+  stroke-width: 0.8;
 }
 
-.gticks span[data-full="true"] {
-  color: var(--accent);
+.adi-rung-neg {
+  stroke-dasharray: 2 1.4;
 }
 
-.gticks span:first-child {
-  transform: none;
+.adi-horizon {
+  stroke-width: 1.2;
 }
 
-.gticks span:last-child {
-  transform: translateX(-100%);
+.adi-rung-lab {
+  fill: var(--ins-mark);
 }
 
-.gwarn {
-  margin-top: var(--s1);
-  color: var(--accent);
+.adi-pointer {
+  fill: var(--ins-mark);
+}
+
+.adi-ring {
+  fill: none;
+  stroke: var(--ins-face);
+  stroke-width: 1.2;
+}
+
+.adi-acft path,
+.adi-acft circle {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+
+.adi-acft-halo path,
+.adi-acft-halo circle {
+  fill: none;
+  stroke: var(--ins-face);
+  stroke-width: 3.6;
+  stroke-linejoin: round;
+}
+
+.ins-foot {
+  margin-top: 4px;
+}
+
+.ins-sat {
+  min-height: 22px;
+}
+
+.ins-sat .sat-tag {
+  margin-top: 0;
+  justify-content: center;
+}
+
+.ins-foot .honest-note {
+  margin: 0;
+  text-align: center;
+}
+
+/* controls sit bottom-right: below ~1100px the cluster lifts above them */
+@media (max-width: 1100px) {
+  :root {
+    --ring: min(19vh, 168px, calc((100vw - 96px) / 4.25));
+  }
+  .instruments {
+    bottom: 66px;
+  }
 }
 
 /* --- controls, bottom right --------------------------------------------- */
@@ -256,35 +365,6 @@ kbd {
 .keyhints kbd {
   margin: 0 4px 0 0;
   color: var(--text);
-}
-
-/* --- flight data, top centre ------------------------------------------- */
-.flightstrip {
-  top: var(--s2);
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: var(--s2);
-  padding: 6px 12px;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-.fs-k {
-  color: var(--muted);
-  font-size: 10px;
-  margin-right: 6px;
-}
-
-.fs-v {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.fs-u {
-  color: var(--muted);
-  font-size: 11px;
-  margin-left: 2px;
 }
 
 /* --- cuff status, top right --------------------------------------------- */
@@ -443,15 +523,6 @@ kbd {
   font-family: var(--mono);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .gvalue {
-    transition: none;
-  }
-  .gvalue[data-zone="extreme"] {
-    transform: none;
-  }
-}
-
 @media (max-width: 720px) {
   .keyhints {
     display: none;
@@ -460,10 +531,27 @@ kbd {
     bottom: auto;
     top: 140px;
   }
-  .gvalue {
-    font-size: 40px;
+  .instruments {
+    bottom: var(--s2);
   }
-  .flightstrip {
-    top: 72px;
-  }
+}
+
+/* --- crash banner ------------------------------------------------------- */
+.crash-banner {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s1, 8px);
+  padding: 16px 28px;
+  border: 1px solid #e0605a;
+  text-align: center;
+}
+.crash-banner strong {
+  font-size: 28px;
+  letter-spacing: 0.12em;
+  color: #ff8d86;
 }

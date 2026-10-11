@@ -14,11 +14,12 @@ Wiring: [docs/wiring.md](../docs/wiring.md).
 
 Open `trainer_logic.h` and change these in `TrainerConfig`:
 
-| Setting | Meaning | Placeholder |
+| Setting | Meaning | Current value (01, hand-timed on the leg) |
 |---|---|---|
-| `inflateMs` | pump time, empty → comfortably firm | 8000 |
-| `ventMs` | vent time, firm → completely empty (include the slow tail) | 4000 |
-| `pumpMaxRunMs` | hard cap on one pump run; keep it ~25% above `inflateMs` | 10000 |
+| `inflateMs` | pump time, empty → comfortably firm | 30000 |
+| `ventMs` | vent time, firm → completely empty (include the slow tail) | 5000 |
+| `pumpMaxRunMs` | hard cap on one pump run; keep it above `inflateMs` | 35000 |
+| `preloadMs` | pump time from empty to the baseline held at 1 G (0 = no preload) | 25000 |
 | `gFull` | G that means a full squeeze | 6.0 |
 
 ## Hand test (no laptop script needed)
@@ -40,10 +41,11 @@ real script sends 20 lines a second. Use `TEST` for hand checks, or run `bridge.
 
 There's no pressure sensor, so the sketch estimates how full the cuff is from how long it has pumped and vented.
 
-- G is mapped to a target fill: 1 G or less = empty, 6 G or more = full, straight line in between.
+- G is mapped to a target fill: 1 G or less = the **preload** baseline (`preloadMs / inflateMs`, 25 s of 30 s = 0.83), 6 G or more = full, straight line in between. With `preloadMs = 0` the baseline is empty.
+- **Prep:** at start (or after the signal returns) the first G line makes it pump up to the baseline and hold; it then follows G from there. Back at 1 G it vents only down to the baseline, not empty.
 - Below target → inflate (pump on, valve closed). Above target → vent (both off). Close enough → hold (valve closed only).
 - A deadband stops the relays chattering on small G wiggles.
-- Every time G returns to 1, it vents all the way, which resets any estimate drift.
+- Dead-man or `STOP` vents all the way to empty, which resets any estimate drift. With a preload, returning to 1 G no longer does that, so the estimate can drift over many pulls. Re-zero by sending `STOP`, waiting ~6 s, then letting G lines resume (it re-preps). A pump cap lockout also only clears after a full vent.
 
 ## Safety built in
 
@@ -55,7 +57,7 @@ There's no pressure sensor, so the sketch estimates how full the cuff is from ho
 
 ## Tests
 
-The control logic is unit-tested on a laptop (20 checks, including dead-man, pump cap, deadband, garbage input):
+The control logic is unit-tested on a laptop (34 checks, including preload, dead-man, pump cap, deadband, garbage input):
 
 ```bash
 cd firmware/test && g++ -std=c++11 -I../g_trainer test_logic.cpp -o test_logic && ./test_logic

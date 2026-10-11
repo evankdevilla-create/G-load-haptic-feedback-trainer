@@ -18,6 +18,7 @@
 set -u
 setopt null_glob   # an unmatched /Volumes/FlightGear* must expand to nothing, not error
 cd "$(dirname "$0")"
+mkdir -p logs   # gitignored, so absent on a fresh clone
 
 # ---- settings you might change -------------------------------------------
 # The c172p tops out around 4 G, so a 6 G squeeze can never happen in one.

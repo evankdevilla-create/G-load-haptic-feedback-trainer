@@ -24,6 +24,7 @@ import os
 import socket
 import struct
 import json
+import math
 import threading
 import time
 import urllib.request
@@ -102,7 +103,7 @@ G_PLAUSIBLE_MAX = 9.5
 # sends the value back to us. g_nrml = vertical G-load in g (1.0 in level flight).
 XPLANE_PORT = 49000
 XPLANE_DATAREF = "sim/flightmodel/forces/g_nrml"
-LIVE_TIMEOUT_S = 1.0   # no data from the sim this long -> stop sending (cuff vents)
+LIVE_TIMEOUT_S = 0.3   # no data from the sim this long -> stop sending (cuff vents)
 SMOOTHING = 0.4        # 0..1, how far to move toward each new reading. 1 = no smoothing
 
 
@@ -149,8 +150,20 @@ def step_g(t):
     return 1.0, "done", True
 
 
+def usable_g(v):
+    """A live reading we are willing to act on: a finite number in a believable range."""
+    return isinstance(v, (int, float)) and math.isfinite(v) and -5.0 <= v <= 15.0
+
+
+def bind_address(sim_host):
+    """Local-only unless the sim is on another machine."""
+    return "127.0.0.1" if sim_host in ("127.0.0.1", "localhost", "::1") else "0.0.0.0"
+
+
 def clamp(g):
     """Keep G inside the range the Arduino accepts."""
+    if not math.isfinite(g):  # NaN/inf would otherwise come out as MAX_G
+        return MIN_G
     return max(MIN_G, min(MAX_G, g))
 
 
@@ -178,11 +191,14 @@ def listen_for_enter():
 
 def find_arduino_port():
     """Look through USB serial devices for something that looks like an Arduino.
-    Genuine Unos show up as 'usbmodem', cheap clones as 'usbserial'/'wchusbserial'."""
+    macOS: 'usbmodem' (genuine) / 'usbserial' (clones). Linux: ttyACM*/ttyUSB*.
+    Also matches the Arduino/CH340 descriptions and vendor ids 0x2341 / 0x1a86."""
     for p in serial.tools.list_ports.comports():
         name = p.device.lower()
-        desc = (p.description or "").lower()
-        if "usbmodem" in name or "usbserial" in name or "arduino" in desc or "ch340" in desc:
+        text = ((p.description or "") + " " + (getattr(p, "manufacturer", None) or "")).lower()
+        if (any(k in name for k in ("usbmodem", "usbserial", "ttyacm", "ttyusb"))
+                or "arduino" in text or "ch340" in text
+                or getattr(p, "vid", None) in (0x2341, 0x1A86)):
             return p.device
     return None
 
@@ -269,12 +285,14 @@ class FlightGear:
                     time.sleep(1)
                 continue
             value = self._get(self.prop)
-            if value is None:
+            value = value * self.sign if value is not None else None
+            if value is None or not usable_g(value):
+                self.last_value = None   # failed/implausible poll: never re-send a stale reading
                 if time.time() - self.last_rx > 5:
                     self.prop = None   # lost it for a while: search again (aircraft change, restart)
                 time.sleep(0.2)
                 continue
-            self.last_value = value * self.sign
+            self.last_value = value
             self.last_rx = time.time()
             time.sleep(1 / SEND_RATE_HZ)
 
@@ -299,7 +317,8 @@ class XPlane:
         self.addr = (host, XPLANE_PORT)
         self.dataref = dataref
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind(("0.0.0.0", 0))   # any free port; replies come back here
+        self.ip = socket.gethostbyname(host)   # only packets from here are believed
+        self.sock.bind((bind_address(host), 0))   # any free port; replies come back here
         self.sock.setblocking(False)
         self.last_value = None
         self.last_rx = 0.0
@@ -322,14 +341,16 @@ class XPlane:
             self.last_request = now
         while True:   # drain every packet waiting, keep the newest value
             try:
-                data, _ = self.sock.recvfrom(2048)
+                data, sender = self.sock.recvfrom(2048)
             except (BlockingIOError, OSError):
                 break
+            if sender[0] != self.ip:
+                continue   # not from the sim we asked
             if not data.startswith(b"RREF") or len(data) < 13:
                 continue
             for i in range(5, len(data) - 7, 8):   # 8-byte (index, value) pairs
                 idx, value = struct.unpack("<if", data[i:i + 8])
-                if idx == self.INDEX and value == value:   # value == value skips NaN
+                if idx == self.INDEX and usable_g(value):   # skips NaN, inf, absurd values
                     self.last_value = value
                     self.last_rx = now
         if now - self.last_rx > LIVE_TIMEOUT_S:
@@ -407,6 +428,8 @@ def main():
             # 1. Decide on G
             if args.live:
                 raw = sim.read()
+                if raw is not None and not usable_g(raw):
+                    raw = None   # treat as no data so the Arduino vents
                 if raw is None:
                     # No data from the sim: send nothing, so the Arduino vents.
                     if not waiting_shown:

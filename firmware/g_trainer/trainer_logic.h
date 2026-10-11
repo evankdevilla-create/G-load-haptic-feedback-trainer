@@ -15,13 +15,18 @@
 #include <string.h>
 
 struct TrainerConfig {
-  // --- From handoff 01's bench measurements. REPLACE THESE PLACEHOLDERS. ---
-  unsigned long inflateMs = 8000;   // pump time, empty -> comfortably firm
-  unsigned long ventMs = 4000;      // vent time, firm -> empty (include the slow tail)
+  // --- Measured by handoff 01 on the leg (2026-10-10, hand-timed). Re-tune per person. ---
+  unsigned long inflateMs = 30000;  // pump time, empty -> comfortably firm
+  unsigned long ventMs = 5000;      // vent time, firm -> empty (include the slow tail)
 
   // Never run the pump longer than this in one go. Must be longer than
-  // inflateMs or the cuff can never reach full.
-  unsigned long pumpMaxRunMs = 10000;
+  // inflateMs or the cuff can never reach full (~15% over is plenty).
+  unsigned long pumpMaxRunMs = 35000;
+
+  // Preload: at 1 G the cuff is pumped up to this baseline (pump time from
+  // empty) and held there, then G adds squeeze on top, so a pull only has to
+  // top up the last bit. 0 = no preload (1 G means an empty cuff).
+  unsigned long preloadMs = 25000;
 
   unsigned long deadmanMs = 500;    // no valid G line for this long -> vent
   unsigned long testPhaseMs = 2000; // TEST: inflate this long, then vent this long
@@ -135,18 +140,27 @@ class Trainer {
   TrainerConfig cfg;
 
  private:
+  // Fill level held at 1 G: the preload, as a fraction of a full inflate.
+  float preloadFill() const {
+    float b = (float)cfg.preloadMs / (float)cfg.inflateMs;
+    return b > 1.0f ? 1.0f : b;
+  }
+
+  // 1 G (or less) -> the preload baseline, gFull (or more) -> full, straight line between.
   float gToFill(float g) const {
     float f = (g - cfg.gEmpty) / (cfg.gFull - cfg.gEmpty);
     if (f < 0.0f) f = 0.0f;
     if (f > 1.0f) f = 1.0f;
-    return f;
+    float base = preloadFill();
+    return base + (1.0f - base) * f;
   }
 
   // Inflate until we reach the target, vent until we reach it, hold in
   // between. Only restart once the error is bigger than the deadband.
   TrainerMode chooseMode(float t) const {
-    // Near-empty target: vent all the way. Using the deadband here (not 0)
-    // stops the valve clicking on sim noise around 1 G in level flight.
+    // Near-empty target (dead-man, STOP, or no preload at 1 G): vent all the
+    // way. Using the deadband here (not 0) stops the valve clicking on sim
+    // noise around 1 G in level flight.
     if (t <= cfg.deadband) return MODE_VENT;
     TrainerMode m = mode;
     if (m == MODE_INFLATE && fill >= t) m = MODE_HOLD;

@@ -50,6 +50,8 @@ export interface FlightState {
   legElapsed: number;
   /** True once the whole route has been flown. */
   finished: boolean;
+  /** True once the aircraft has hit the ground. Frozen from then on; restart to fly again. */
+  crashed?: boolean;
 }
 
 /**

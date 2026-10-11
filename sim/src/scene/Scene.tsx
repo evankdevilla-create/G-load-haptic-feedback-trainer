@@ -32,9 +32,6 @@ const EYE_HEIGHT = 1.1;
  */
 export type CameraView = "cockpit" | "chase";
 
-/** How fast the chase camera catches up, 1/s. Higher is stiffer. */
-const CHASE_FOLLOW = 7;
-
 function PilotCamera({
   flight,
   view,
@@ -45,11 +42,11 @@ function PilotCamera({
   jetRef: React.RefObject<THREE.Group | null>;
 }) {
   const { camera } = useThree();
-  const smoothed = useRef(new THREE.Vector3());
-  const seeded = useRef(false);
 
   useFrame((_, delta) => {
-    const s = flight.advance(delta);
+    // Advance the physics, then DRAW the interpolated state (smooth at any frame rate).
+    flight.advance(delta);
+    const s = flight.renderState();
 
     // The jet always follows the physics; it is only visible in chase view.
     const jet = jetRef.current;
@@ -61,22 +58,15 @@ function PilotCamera({
     }
 
     if (view === "chase") {
+      // Rigid follow: positional smoothing would make the camera trail the jet by
+      // speed/stiffness metres, and that gap changes with every speed or G change,
+      // which reads as shake. The state is already interpolated, so it is smooth.
       const c = chaseCamera(s);
-      const target = new THREE.Vector3(c.position.x, c.position.y, c.position.z);
-      // Smooth the follow so a 6 G snap does not whip the picture, but never lag
-      // so far that the jet leaves the frame.
-      if (!seeded.current) {
-        smoothed.current.copy(target);
-        seeded.current = true;
-      } else {
-        smoothed.current.lerp(target, 1 - Math.exp(-CHASE_FOLLOW * delta));
-      }
-      camera.position.copy(smoothed.current);
+      camera.position.set(c.position.x, c.position.y, c.position.z);
       camera.up.set(0, 1, 0);
       camera.lookAt(c.lookAt.x, c.lookAt.y, c.lookAt.z);
       return;
     }
-    seeded.current = false;
 
     camera.position.set(s.pos.x, s.pos.y + EYE_HEIGHT, s.pos.z);
 

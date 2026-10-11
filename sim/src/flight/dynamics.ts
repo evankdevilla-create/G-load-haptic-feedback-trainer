@@ -322,12 +322,6 @@ const PITCH_GAIN = PILOT_MAX_G - 1;
 /** Floor on cos(bank) in the trim, same reason as the rollTo leg. */
 const MIN_COS_BANK = 0.2;
 
-/** Ground-avoid: always keep at least this far above the ground, m. */
-const GROUND_CLEARANCE = 150;
-/** Pull-up is sized with this much slack for speed gained and G onset lag. */
-const PULLUP_MARGIN = 1.6;
-/** Stop the auto pull-up once the nose is this far above the horizon, rad. */
-const PULLUP_RELEASE_GAMMA = (5 * Math.PI) / 180;
 /** Below this speed with the nose up, push over before the wing runs out of lift. */
 const STALL_PROTECT_SPEED = V_STALL * 1.3;
 /** G taken off the 1 G trim to drop the nose when protecting against a stall. */
@@ -353,61 +347,50 @@ function holdGammaN(s: FlightState, targetGamma: number): number {
 }
 
 /**
- * Altitude lost recovering from the current dive, plus a margin. Pull-up radius
- * is v^2 / (g (n - 1)); the loss is R (1 - cos gamma). Slow G onset adds a
- * stretch of straight-line dive before the full pull bites.
- */
-function pullUpLoss(s: FlightState): number {
-  if (s.gamma >= 0) return 0;
-  const nPull = Math.min(PILOT_MAX_G, maxLoadFactor(s.v));
-  const radius = (s.v * s.v) / (G0 * Math.max(nPull - 1, 0.1));
-  const onsetLag = Math.max(nPull - s.g, 0) / (2 * G_ONSET_RATE) + Math.abs(s.phi) / ROLL_RATE;
-  return (radius * (1 - Math.cos(s.gamma)) + s.v * -Math.sin(s.gamma) * onsetLag) * PULLUP_MARGIN;
-}
-
-/**
  * Advance one tick under pilot control. Same equations as `step`; only where the
  * command comes from differs. Safety overrides run on top of the stick: the
- * aircraft cannot be flown into the ground, through the ceiling, or into a stall.
+ * aircraft is held below the ceiling and pushed over before a stall. It CAN be
+ * flown into the ground: that is a crash, which freezes it (see below).
  */
 export function stepManual(
   s: FlightState,
   input: PilotInput,
   dt: number = PHYSICS_DT,
 ): FlightState {
-  // Ground-avoid has to level the wings too: at 80 degrees of bank even full pull
-  // barely raises the nose (n cos(bank) is about 1), so it would never recover.
-  const avoidGround =
-    s.pos.y < GROUND_CLEARANCE + pullUpLoss(s) && s.gamma < PULLUP_RELEASE_GAMMA;
-  const phiTarget = avoidGround ? 0 : clamp(input.roll, -1, 1) * MANUAL_MAX_BANK;
+  // A crash is final: nothing moves until the sim is restarted.
+  if (s.crashed) return s;
+
+  const phiTarget = clamp(input.roll, -1, 1) * MANUAL_MAX_BANK;
   // Trim for the bank we will have after this tick, so a held bank holds altitude.
   const phi = approach(s.phi, phiTarget, ROLL_RATE, dt);
   const trim = Math.cos(s.gamma) / Math.max(Math.cos(phi), MIN_COS_BANK);
   let n = trim + clamp(input.pitch, -1, 1) * PITCH_GAIN;
 
-  if (s.v < STALL_PROTECT_SPEED && s.gamma > 0) n = Math.min(n, trim - STALL_PUSH_G);
+  const stalling = s.v < STALL_PROTECT_SPEED && s.gamma > 0;
+  if (stalling) n = Math.min(n, trim - STALL_PUSH_G);
   // Look ahead by the climb rate: a zoom climb coasts a long way past the ceiling.
   const altAhead = s.pos.y + Math.max(s.v * Math.sin(s.gamma), 0) * CEILING_LOOKAHEAD;
   if (altAhead > CEILING) {
     const targetGamma = clamp((CEILING - altAhead) * ALT_HOLD_GAIN, -MAX_HOLD_GAMMA, 0);
     n = Math.min(n, holdGammaN(s, targetGamma));
   }
-  // Ground-avoid wins over the pilot whenever it asks for more pull.
-  if (avoidGround) n = Math.max(n, holdGammaN(s, PULLUP_RELEASE_GAMMA));
 
   const cmd = { n: clamp(n, PILOT_MIN_G, PILOT_MAX_G), phi: phiTarget };
   // Overrides recover at full rate; only the pilot's own pull is slowed.
-  const overridden = avoidGround || (s.v < STALL_PROTECT_SPEED && s.gamma > 0) || altAhead > CEILING;
-  const onsetUp = overridden ? G_ONSET_RATE : MANUAL_ONSET_RATE;
+  const onsetUp = stalling || altAhead > CEILING ? G_ONSET_RATE : MANUAL_ONSET_RATE;
   // Mode switching is handled elsewhere: keep the route bookkeeping as handed in.
-  return {
-    // Ground-avoid also firewalls the throttle: at idle the speed bleeds to the
-    // floor, where the wing makes 1 G and the pull-up it asks for never happens.
-    ...integrate(s, cmd, manualSpeedTarget(avoidGround ? 1 : input.throttle), dt, onsetUp),
+  const next: FlightState = {
+    ...integrate(s, cmd, manualSpeedTarget(input.throttle), dt, onsetUp),
     legIndex: s.legIndex,
     legElapsed: s.legElapsed,
     finished: false,
   };
+  // Touching the ground is a crash. It also drops G to 1, so an impact can never
+  // reach the cuff as a spike: the person on the other end feels the baseline.
+  if (next.pos.y <= 0) {
+    return { ...next, pos: { ...next.pos, y: 0 }, v: 0, g: 1, gCommanded: 1, gLimited: false, crashed: true };
+  }
+  return next;
 }
 
 /**

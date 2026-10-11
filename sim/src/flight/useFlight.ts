@@ -15,6 +15,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PilotInputController } from "../input/usePilotInput";
 import { PHYSICS_DT, calmed, initialManualState, initialState, step, stepManual } from "./dynamics";
+import { lerpState } from "./interp";
 import type { FlightMode, FlightState, Route } from "./types";
 
 /**
@@ -62,6 +63,12 @@ export interface FlightController {
   toggleLooping: () => void;
   /** Advance by this many real seconds. Call once per rendered frame. */
   advance: (dtReal: number) => FlightState;
+  /**
+   * The state to DRAW: interpolated between the last two physics steps by how far
+   * into the next step the frame is. Smooth at any frame rate; the cuff and HUD
+   * numbers keep reading the real `stateRef`.
+   */
+  renderState: () => FlightState;
 }
 
 const freshState = (mode: FlightMode, route: Route): FlightState =>
@@ -81,12 +88,14 @@ export function useFlight(route: Route, pilot?: PilotInputController): FlightCon
   const runningRef = useRef(running);
   const loopingRef = useRef(looping);
   const accRef = useRef(0);
+  const prevRef = useRef<FlightState>(stateRef.current);
   runningRef.current = running;
   loopingRef.current = looping;
 
   // Starting a different route starts a different flight.
   useEffect(() => {
     stateRef.current = freshState(modeRef.current, route);
+    prevRef.current = stateRef.current;
     accRef.current = 0;
   }, [route]);
 
@@ -97,6 +106,7 @@ export function useFlight(route: Route, pilot?: PilotInputController): FlightCon
 
       accRef.current = Math.min(accRef.current + dtReal * TIME_SCALE, MAX_CATCHUP_S);
       let s = stateRef.current;
+      let prev = prevRef.current;
       let reachedEnd = false;
       // The cuff was told 1 G while we were paused, hidden or stalled (no physics
       // steps), so the state's old G must not come back: a pause at 6 G would
@@ -104,6 +114,7 @@ export function useFlight(route: Route, pilot?: PilotInputController): FlightCon
       // centred stick and let the normal onset rate ramp up.
       if (performance.now() - lastStepAtRef.current > STALL_MS) {
         s = calmed(s);
+        prev = s;
         pilot?.release();
       }
       const manual = modeRef.current === "manual";
@@ -112,6 +123,7 @@ export function useFlight(route: Route, pilot?: PilotInputController): FlightCon
 
       while (accRef.current >= PHYSICS_DT) {
         accRef.current -= PHYSICS_DT;
+        prev = s;
         if (manual) {
           if (input) s = stepManual(s, input);
           continue;
@@ -120,6 +132,7 @@ export function useFlight(route: Route, pilot?: PilotInputController): FlightCon
         if (s.finished) {
           if (loopingRef.current) {
             s = initialState(route);
+            prev = s;
           } else {
             reachedEnd = true;
             break;
@@ -128,6 +141,7 @@ export function useFlight(route: Route, pilot?: PilotInputController): FlightCon
       }
 
       stateRef.current = s;
+      prevRef.current = prev;
       lastStepAtRef.current = performance.now();
       if (reachedEnd) setRunning(false);
       return s;
@@ -135,8 +149,14 @@ export function useFlight(route: Route, pilot?: PilotInputController): FlightCon
     [route, pilot],
   );
 
+  const renderState = useCallback(
+    (): FlightState => lerpState(prevRef.current, stateRef.current, accRef.current / PHYSICS_DT),
+    [],
+  );
+
   const restart = useCallback(() => {
     stateRef.current = freshState(modeRef.current, route);
+    prevRef.current = stateRef.current;
     accRef.current = 0;
     setRunning(true);
   }, [route]);
@@ -147,6 +167,7 @@ export function useFlight(route: Route, pilot?: PilotInputController): FlightCon
       modeRef.current = m;
       // To manual: carry on from where we are. To auto: the script starts over.
       if (m === "auto") stateRef.current = initialState(route);
+      prevRef.current = stateRef.current;
       pilot?.release();
       accRef.current = 0;
       setModeState(m);
@@ -164,6 +185,7 @@ export function useFlight(route: Route, pilot?: PilotInputController): FlightCon
   // (resume, restore, end of a panic) jumps the cuff from empty to the old G.
   const calm = useCallback(() => {
     stateRef.current = calmed(stateRef.current);
+    prevRef.current = stateRef.current;
     pilot?.release();
   }, [pilot]);
   const pause = useCallback(() => {
@@ -192,6 +214,7 @@ export function useFlight(route: Route, pilot?: PilotInputController): FlightCon
     restart,
     toggleLooping,
     advance,
+    renderState,
   };
 }
 

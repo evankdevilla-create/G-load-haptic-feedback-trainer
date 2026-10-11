@@ -12,6 +12,8 @@ export const CHASE_BACK = 19;
 export const CHASE_UP = 5.5;
 /** Metres ahead of the jet the camera looks at, so the jet sits low in frame. */
 export const CHASE_LOOK_AHEAD = 12;
+/** Metres BELOW the jet the camera aims, so the jet rides high in frame, clear of the instrument cluster. */
+export const CHASE_LOOK_DROP = 9;
 
 export interface ChaseCamera {
   position: Vec3;
@@ -30,7 +32,7 @@ export function chaseCamera(s: FlightState): ChaseCamera {
     },
     lookAt: {
       x: s.pos.x + fx * CHASE_LOOK_AHEAD,
-      y: s.pos.y,
+      y: s.pos.y - CHASE_LOOK_DROP,
       z: s.pos.z + fz * CHASE_LOOK_AHEAD,
     },
   };

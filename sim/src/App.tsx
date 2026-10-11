@@ -88,6 +88,7 @@ export function App() {
         running={flight.running}
         mode={flight.mode}
         view={view}
+        getRenderState={flight.renderState}
         cuffEnabled={cuffEnabled}
         onToggleRunning={flight.toggleRunning}
         onRestart={flight.restart}

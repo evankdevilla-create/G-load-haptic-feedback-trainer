@@ -77,39 +77,49 @@ describe("manual: hands off", () => {
   });
 });
 
-describe("manual: staying airborne", () => {
-  it("full push-over for 60 s never reaches the ground", () => {
-    const states = flyManual(manualRoute(), 60, () => ({ pitch: -1, roll: 0, throttle: 0.5 }));
-    const minAlt = Math.min(...states.map((s) => s.pos.y));
-    expect(minAlt).toBeGreaterThan(50);
+describe("manual: ground collision", () => {
+  const dive = () => flyManual(manualRoute(), 120, () => ({ pitch: -1, roll: 0, throttle: 0.5 }));
+
+  it("flying into the ground ends in a crash, never below the ground", () => {
+    const states = dive();
+    expect(states.some((s) => s.crashed)).toBe(true);
+    expect(Math.min(...states.map((s) => s.pos.y))).toBeGreaterThanOrEqual(0);
   });
 
-  it("full push-over at full throttle from low altitude stays up", () => {
-    const states = flyManual(manualRoute(300, 300), 60, () => ({ pitch: -1, roll: 0, throttle: 1 }));
-    expect(Math.min(...states.map((s) => s.pos.y))).toBeGreaterThan(20);
+  it("a crash freezes the aircraft: no speed, G back to 1, and it stays put", () => {
+    const states = dive();
+    const first = states.find((s) => s.crashed);
+    expect(first).toBeDefined();
+    const c = first as FlightState;
+    expect(c.v).toBe(0);
+    expect(c.g).toBe(1);
+    expect(c.pos.y).toBe(0);
+    const later = stepManual(stepManual(c, { pitch: 1, roll: 1, throttle: 1 }), NEUTRAL_INPUT);
+    expect(later).toEqual(c);
   });
 
-  it("an inverted-ish roll plus push-over stays up", () => {
-    const states = flyManual(manualRoute(600, 250), 60, () => ({ pitch: -1, roll: 1, throttle: 0.5 }));
-    expect(Math.min(...states.map((s) => s.pos.y))).toBeGreaterThan(20);
+  it("the impact never reaches the cuff: G stays within the pilot cap and ends at 1", () => {
+    for (const s of dive()) {
+      expect(s.g).toBeLessThanOrEqual(PILOT_MAX_G + 1e-9);
+      expect(s.g).toBeGreaterThanOrEqual(PILOT_MIN_G - 1e-9);
+    }
+    expect(last(dive()).g).toBe(1);
+  });
+
+  it("hands-off level flight and a normal climb never crash", () => {
+    expect(flyManual(manualRoute(), 120, () => NEUTRAL_INPUT).some((s) => s.crashed)).toBe(false);
+    expect(flyManual(manualRoute(), 30, () => ({ pitch: 0.5, roll: 0, throttle: 0.7 })).some((s) => s.crashed)).toBe(false);
+  });
+
+  it("a crash is reported in a single, consistent state (no NaN)", () => {
+    const c = last(dive());
+    expect(Number.isFinite(c.pos.x + c.pos.y + c.pos.z + c.psi + c.gamma + c.phi + c.alpha)).toBe(true);
   });
 
   it("does not climb far past the soft ceiling", () => {
     const states = flyManual(manualRoute(11000, 250), 240, () => ({ pitch: 1, roll: 0, throttle: 1 }));
     expect(Math.max(...states.map((s) => s.pos.y))).toBeLessThan(14000);
   });
-});
-
-describe("manual: staying airborne at zero throttle", () => {
-  // Judge finding: throttle 0 bleeds speed to V_MIN, where the wing can only make
-  // 1 G, so a pull-up it cannot fly never recovers. Ground-avoid must add power.
-  const starts: Array<[number, number]> = [[2000, 220], [1500, 220], [1000, 130], [400, 60]];
-  for (const [alt, spd] of starts) {
-    it(`stick forward + throttle 0 from ${alt} m at ${spd} m/s for 400 s stays up`, () => {
-      const states = flyManual(manualRoute(alt, spd), 400, () => ({ pitch: -1, roll: 0.3, throttle: 0 }));
-      expect(Math.min(...states.map((s) => s.pos.y))).toBeGreaterThan(20);
-    });
-  }
 });
 
 describe("calmed (resume after pause / kill / panic)", () => {
@@ -149,7 +159,7 @@ describe("manual: G limits", () => {
       expect(s.g).toBeLessThanOrEqual(PILOT_MAX_G + 1e-9);
       expect(s.g).toBeLessThanOrEqual(maxLoadFactor(s.v) + 1e-9);
       expect(s.v).toBeGreaterThanOrEqual(V_MIN);
-      expect(s.pos.y).toBeGreaterThan(0);
+      expect(s.pos.y).toBeGreaterThanOrEqual(0);
     }
   });
 
@@ -259,7 +269,7 @@ describe("manual: determinism and fuzz", () => {
     expect(last(a)).toEqual(last(b));
   });
 
-  it.each([1, 2, 3, 4, 5])("seeded random stick for 5 min never hits ground or goes NaN (seed %i)", { timeout: 60000 }, (seed) => {
+  it.each([1, 2, 3, 4, 5])("seeded random stick for 5 min never goes below ground, over the G cap, or NaN (seed %i)", { timeout: 60000 }, (seed) => {
     const rand = rng(seed);
     const route = manualRoute(rand() < 0.5 ? 400 : 2000, 220);
     let s = initialManualState(route);
@@ -280,13 +290,14 @@ describe("manual: determinism and fuzz", () => {
       const bad =
         !isFinite(s.pos.x + s.pos.y + s.pos.z + s.v + s.psi + s.gamma + s.phi + s.alpha + s.g) ||
         s.g > PILOT_MAX_G + 1e-9 ||
-        s.g > maxLoadFactor(s.v) + 1e-9 ||
+        (!s.crashed && s.g > maxLoadFactor(s.v) + 1e-9) ||
         s.g < PILOT_MIN_G - 1e-9 ||
-        s.v < V_MIN ||
+        (!s.crashed && s.v < V_MIN) ||
+        s.pos.y < 0 ||
         s.finished;
       if (bad && violations.length < 3) violations.push(`t=${s.t.toFixed(2)} ${JSON.stringify(s)}`);
     }
     expect(violations).toEqual([]);
-    expect(minAlt).toBeGreaterThan(20);
+    expect(minAlt).toBeGreaterThanOrEqual(0);
   });
 });

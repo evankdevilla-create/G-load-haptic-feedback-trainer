@@ -39,3 +39,10 @@ describe("chaseCamera", () => {
     }
   });
 });
+
+describe("chase framing", () => {
+  it("aims below the jet so it rides high in frame, clear of the instruments", () => {
+    const s = initialState(route(0));
+    expect(chaseCamera(s).lookAt.y).toBeLessThan(s.pos.y);
+  });
+});

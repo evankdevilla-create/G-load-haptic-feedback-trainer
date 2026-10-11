@@ -94,3 +94,21 @@ export function legTargetG(m: Maneuver): number {
       return 1;
   }
 }
+
+/**
+ * Pilot stick/throttle, each axis already normalised. The input layer produces
+ * this; the physics consumes it. Neutral (all zeros) must mean "hold level".
+ */
+export interface PilotInput {
+  /** -1 (push) .. +1 (pull). Sets load factor OFFSET from level-flight trim. */
+  pitch: number;
+  /** -1 (left) .. +1 (right). Sets target bank angle. */
+  roll: number;
+  /** 0 .. 1 throttle trim demand. 0.5 = hold the speed target. */
+  throttle: number;
+}
+
+export const NEUTRAL_INPUT: PilotInput = { pitch: 0, roll: 0, throttle: 0.5 };
+
+/** manual = player flies; auto = the scripted DEMO_ROUTE autopilot. */
+export type FlightMode = "manual" | "auto";

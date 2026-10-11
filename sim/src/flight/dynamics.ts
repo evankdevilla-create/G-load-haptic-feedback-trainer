@@ -21,7 +21,7 @@
  * always produces the same flight. A demo you cannot reproduce is not a demo.
  */
 
-import type { FlightState, Maneuver, Route, Vec3 } from "./types";
+import type { FlightState, Maneuver, PilotInput, Route, Vec3 } from "./types";
 
 /** Standard gravity, m/s^2. */
 export const G0 = 9.80665;
@@ -56,13 +56,20 @@ const INDUCED_ACCEL = 0.28;
 /** Angle of attack at the 1 G stall, rad. Used to place the nose. */
 const ALPHA_STALL = 0.26;
 /** Structural limit. The cuff never sees more than this. */
-export const N_STRUCTURAL_MAX = 9;
+export const N_STRUCTURAL_MAX = 10;
 /** The most negative G we will model. */
 export const N_STRUCTURAL_MIN = -3;
 
 // --- how fast the pilot can change things ----------------------------------
 /** Onset rate, G per second. A real pull is not a step change. */
 export const G_ONSET_RATE = 4.0;
+/**
+ * Slower build-up when a person is flying, G per second. A judge holding W would
+ * otherwise take the cuff from empty to full in about a second. G still comes OFF
+ * at G_ONSET_RATE (deflating is the safe direction), and the safety overrides
+ * (ground-avoid, stall, ceiling) keep the full rate so recovery is never slowed.
+ */
+export const MANUAL_ONSET_RATE = 2.0;
 /** Roll rate, rad/s. */
 const ROLL_RATE = (150 * Math.PI) / 180;
 /** Gain for the "hold me level" controller, 1/s. */
@@ -199,23 +206,26 @@ export function initialState(route: Route): FlightState {
   };
 }
 
+/** The part of a tick that does not depend on whether a route or a pilot is flying. */
+type CoreState = Omit<FlightState, "legIndex" | "legElapsed" | "finished">;
+
 /**
- * Advance the aircraft by exactly one physics tick.
- *
- * Pure: same input, same output. That is what the tests lean on, and what makes
- * the route reproducible on stage.
+ * One tick of the point-mass equations, shared by the scripted route and the
+ * manual stick so the two cannot drift apart. `cmd` is the load factor and bank
+ * being asked for; this applies onset rate, wing limit and speed limits.
  */
-export function step(s: FlightState, route: Route, dt: number = PHYSICS_DT): FlightState {
-  const leg = route.legs[s.legIndex];
-  if (!leg) return { ...s, finished: true, g: 1 };
-
-  const cmd = commandFor(leg, s, route.start.altitude);
-
+function integrate(
+  s: FlightState,
+  cmd: Command,
+  targetSpeed: number,
+  dt: number,
+  onsetUp: number = G_ONSET_RATE,
+): CoreState {
   // 1. The pilot cannot snap to a load factor, and the wing has a limit.
   const commanded = clamp(cmd.n, N_STRUCTURAL_MIN, N_STRUCTURAL_MAX);
   const available = maxLoadFactor(s.v);
   const reachable = clamp(commanded, N_STRUCTURAL_MIN, available);
-  const n = approach(s.g, reachable, G_ONSET_RATE, dt);
+  const n = approach(s.g, reachable, reachable > s.g ? onsetUp : G_ONSET_RATE, dt);
   const phi = approach(s.phi, cmd.phi, ROLL_RATE, dt);
 
   // 2. Point-mass equations of motion.
@@ -228,7 +238,7 @@ export function step(s: FlightState, route: Route, dt: number = PHYSICS_DT): Fli
   // One correction pass is plenty: the change is tiny but it keeps the invariant
   // exactly true, and this number drives a pump on someone's leg.
   const vGuess = clamp(
-    s.v + (thrustAccel(v, route.start.speed) - dragAccel(n, v) - G0 * Math.sin(s.gamma)) * dt,
+    s.v + (thrustAccel(v, targetSpeed) - dragAccel(n, v) - G0 * Math.sin(s.gamma)) * dt,
     V_MIN,
     V_MAX,
   );
@@ -237,8 +247,7 @@ export function step(s: FlightState, route: Route, dt: number = PHYSICS_DT): Fli
   const gammaDot = (G0 / v) * (nFinal * Math.cos(phi) - cosGamma);
   // cos(gamma) in the denominator blows up pointing straight up, so floor it.
   const psiDot = (G0 * nFinal * Math.sin(phi)) / (v * Math.max(cosGamma, 0.2));
-  const vDot =
-    thrustAccel(v, route.start.speed) - dragAccel(nFinal, v) - G0 * Math.sin(s.gamma);
+  const vDot = thrustAccel(v, targetSpeed) - dragAccel(nFinal, v) - G0 * Math.sin(s.gamma);
 
   let gamma = s.gamma + gammaDot * dt;
   gamma = clamp(gamma, (-89 * Math.PI) / 180, (89 * Math.PI) / 180);
@@ -258,11 +267,6 @@ export function step(s: FlightState, route: Route, dt: number = PHYSICS_DT): Fli
     z: s.pos.z + vel.z * dt,
   };
 
-  // 4. Route bookkeeping.
-  const legElapsed = s.legElapsed + dt;
-  const legDone = legElapsed >= leg.seconds;
-  const legIndex = legDone ? s.legIndex + 1 : s.legIndex;
-
   return {
     t: s.t + dt,
     pos,
@@ -276,10 +280,143 @@ export function step(s: FlightState, route: Route, dt: number = PHYSICS_DT): Fli
     // Only call it limited when the wing is the reason, not the onset rate.
     gLimited: commanded > Math.min(available, maxLoadFactor(vNext)) + 1e-6,
     distance: s.distance + vNext * dt,
+  };
+}
+
+/**
+ * Advance the aircraft by exactly one physics tick.
+ *
+ * Pure: same input, same output. That is what the tests lean on, and what makes
+ * the route reproducible on stage.
+ */
+export function step(s: FlightState, route: Route, dt: number = PHYSICS_DT): FlightState {
+  const leg = route.legs[s.legIndex];
+  if (!leg) return { ...s, finished: true, g: 1 };
+
+  const core = integrate(s, commandFor(leg, s, route.start.altitude), route.start.speed, dt);
+
+  // 4. Route bookkeeping.
+  const legElapsed = s.legElapsed + dt;
+  const legDone = legElapsed >= leg.seconds;
+  const legIndex = legDone ? s.legIndex + 1 : s.legIndex;
+
+  return {
+    ...core,
     legIndex,
     legElapsed: legDone ? 0 : legElapsed,
     finished: legIndex >= route.legs.length,
   };
+}
+
+// --- manual flight ----------------------------------------------------------
+/** Highest load factor the pilot can ask for. Full pull in level flight gets here. */
+export const PILOT_MAX_G = 10;
+/** Most negative load factor the pilot can ask for. */
+export const PILOT_MIN_G = -1.5;
+/** Speed that throttle 0.5 holds. Route-independent, unlike the scripted sorties. */
+const MANUAL_SPEED = 220;
+/** Max bank from full roll input, rad. Short of 90 so 1/cos(bank) stays sane. */
+const MANUAL_MAX_BANK = (80 * Math.PI) / 180;
+/** Load factor per unit of stick, so full pull from trim (1 G) reaches PILOT_MAX_G. */
+const PITCH_GAIN = PILOT_MAX_G - 1;
+/** Floor on cos(bank) in the trim, same reason as the rollTo leg. */
+const MIN_COS_BANK = 0.2;
+
+/** Ground-avoid: always keep at least this far above the ground, m. */
+const GROUND_CLEARANCE = 150;
+/** Pull-up is sized with this much slack for speed gained and G onset lag. */
+const PULLUP_MARGIN = 1.6;
+/** Stop the auto pull-up once the nose is this far above the horizon, rad. */
+const PULLUP_RELEASE_GAMMA = (5 * Math.PI) / 180;
+/** Below this speed with the nose up, push over before the wing runs out of lift. */
+const STALL_PROTECT_SPEED = V_STALL * 1.3;
+/** G taken off the 1 G trim to drop the nose when protecting against a stall. */
+const STALL_PUSH_G = 0.6;
+/** Soft ceiling, m. Above it the aircraft is pushed back down. */
+const CEILING = 12000;
+/** Seconds of climb rate counted towards the ceiling check. */
+const CEILING_LOOKAHEAD = 5;
+
+export function initialManualState(route: Route): FlightState {
+  return initialState(route);
+}
+
+/** Speed target for throttle 0..1, spanning V_MIN..V_MAX with 0.5 at MANUAL_SPEED. */
+function manualSpeedTarget(throttle: number): number {
+  const t = clamp(throttle, 0, 1) - 0.5;
+  return MANUAL_SPEED + 2 * t * (t > 0 ? V_MAX - MANUAL_SPEED : MANUAL_SPEED - V_MIN);
+}
+
+/** Load factor that nulls gamma error towards `targetGamma`, as the level leg does. */
+function holdGammaN(s: FlightState, targetGamma: number): number {
+  return Math.cos(s.gamma) + (GAMMA_HOLD_GAIN * (targetGamma - s.gamma) * s.v) / G0;
+}
+
+/**
+ * Altitude lost recovering from the current dive, plus a margin. Pull-up radius
+ * is v^2 / (g (n - 1)); the loss is R (1 - cos gamma). Slow G onset adds a
+ * stretch of straight-line dive before the full pull bites.
+ */
+function pullUpLoss(s: FlightState): number {
+  if (s.gamma >= 0) return 0;
+  const nPull = Math.min(PILOT_MAX_G, maxLoadFactor(s.v));
+  const radius = (s.v * s.v) / (G0 * Math.max(nPull - 1, 0.1));
+  const onsetLag = Math.max(nPull - s.g, 0) / (2 * G_ONSET_RATE) + Math.abs(s.phi) / ROLL_RATE;
+  return (radius * (1 - Math.cos(s.gamma)) + s.v * -Math.sin(s.gamma) * onsetLag) * PULLUP_MARGIN;
+}
+
+/**
+ * Advance one tick under pilot control. Same equations as `step`; only where the
+ * command comes from differs. Safety overrides run on top of the stick: the
+ * aircraft cannot be flown into the ground, through the ceiling, or into a stall.
+ */
+export function stepManual(
+  s: FlightState,
+  input: PilotInput,
+  dt: number = PHYSICS_DT,
+): FlightState {
+  // Ground-avoid has to level the wings too: at 80 degrees of bank even full pull
+  // barely raises the nose (n cos(bank) is about 1), so it would never recover.
+  const avoidGround =
+    s.pos.y < GROUND_CLEARANCE + pullUpLoss(s) && s.gamma < PULLUP_RELEASE_GAMMA;
+  const phiTarget = avoidGround ? 0 : clamp(input.roll, -1, 1) * MANUAL_MAX_BANK;
+  // Trim for the bank we will have after this tick, so a held bank holds altitude.
+  const phi = approach(s.phi, phiTarget, ROLL_RATE, dt);
+  const trim = Math.cos(s.gamma) / Math.max(Math.cos(phi), MIN_COS_BANK);
+  let n = trim + clamp(input.pitch, -1, 1) * PITCH_GAIN;
+
+  if (s.v < STALL_PROTECT_SPEED && s.gamma > 0) n = Math.min(n, trim - STALL_PUSH_G);
+  // Look ahead by the climb rate: a zoom climb coasts a long way past the ceiling.
+  const altAhead = s.pos.y + Math.max(s.v * Math.sin(s.gamma), 0) * CEILING_LOOKAHEAD;
+  if (altAhead > CEILING) {
+    const targetGamma = clamp((CEILING - altAhead) * ALT_HOLD_GAIN, -MAX_HOLD_GAMMA, 0);
+    n = Math.min(n, holdGammaN(s, targetGamma));
+  }
+  // Ground-avoid wins over the pilot whenever it asks for more pull.
+  if (avoidGround) n = Math.max(n, holdGammaN(s, PULLUP_RELEASE_GAMMA));
+
+  const cmd = { n: clamp(n, PILOT_MIN_G, PILOT_MAX_G), phi: phiTarget };
+  // Overrides recover at full rate; only the pilot's own pull is slowed.
+  const overridden = avoidGround || (s.v < STALL_PROTECT_SPEED && s.gamma > 0) || altAhead > CEILING;
+  const onsetUp = overridden ? G_ONSET_RATE : MANUAL_ONSET_RATE;
+  // Mode switching is handled elsewhere: keep the route bookkeeping as handed in.
+  return {
+    // Ground-avoid also firewalls the throttle: at idle the speed bleeds to the
+    // floor, where the wing makes 1 G and the pull-up it asks for never happens.
+    ...integrate(s, cmd, manualSpeedTarget(avoidGround ? 1 : input.throttle), dt, onsetUp),
+    legIndex: s.legIndex,
+    legElapsed: s.legElapsed,
+    finished: false,
+  };
+}
+
+/**
+ * The same flight with the G dropped to 1. Used whenever the cuff has been told
+ * 1 G (paused, link killed, panic vent) while the sim kept its old G: without it,
+ * the moment the live value is posted again the cuff jumps from empty to that G.
+ */
+export function calmed(s: FlightState): FlightState {
+  return { ...s, g: 1, gCommanded: 1, gLimited: false };
 }
 
 /** Keep an angle in [-pi, pi). */

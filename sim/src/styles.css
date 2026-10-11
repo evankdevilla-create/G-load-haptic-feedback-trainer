@@ -1,10 +1,15 @@
+/* Flat instrument look: neutral greys, one amber accent, no glow, no blur. */
 :root {
-  --hud: #7dffa8;
-  --hud-dim: rgba(125, 255, 168, 0.55);
-  --warn: #ffd166;
-  --alarm: #ff6b6b;
-  --panel: rgba(6, 14, 10, 0.82);
+  --bg: #0c0e10;
+  --panel: #14171a;
+  --line: #2a2f34;
+  --text: #e6e8ea;
+  --muted: #8b939a;
+  --accent: #f0a63a; /* past 6 G, where the cuff is already full */
+  --alarm: #e5534b;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --s1: 8px;
+  --s2: 16px;
 }
 
 * {
@@ -16,13 +21,13 @@ body,
 #root {
   margin: 0;
   height: 100%;
-  background: #05080a;
-  color: var(--hud);
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--mono);
+  font-size: 13px;
   overflow: hidden;
 }
 
-/* The 3D view fills the window; everything else floats on top of it. */
 .viewport {
   position: fixed;
   inset: 0;
@@ -32,306 +37,267 @@ body,
   position: fixed;
   inset: 0;
   pointer-events: none;
-}
-
-/* Only the controls accept clicks. */
-.overlay .interactive {
-  pointer-events: auto;
-}
-
-button {
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--hud);
-  background: var(--panel);
-  border: 1px solid var(--hud-dim);
-  border-radius: 3px;
-  padding: 7px 12px;
-  cursor: pointer;
-}
-
-button:hover {
-  background: rgba(125, 255, 168, 0.14);
-}
-
-button[aria-pressed="true"] {
-  background: rgba(125, 255, 168, 0.22);
-  border-color: var(--hud);
-}
-
-/* --- the canopy sits above the 3D view but below the instruments ---------- */
-.cockpit {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.overlay {
   z-index: 2;
+}
+
+.overlay .interactive,
+.interactive {
+  pointer-events: auto;
 }
 
 .panel {
   position: absolute;
-  padding: 10px 12px;
+  padding: var(--s1) var(--s2);
   background: var(--panel);
-  border: 1px solid rgba(125, 255, 168, 0.22);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--line);
   border-radius: 4px;
-  backdrop-filter: blur(2px);
+  padding: 6px 12px;
+  min-height: 32px;
+  cursor: pointer;
 }
 
-.top-left {
-  top: 16px;
-  left: 20px;
-  width: 310px;
+button:hover {
+  background: #1c2024;
 }
 
-.top-right {
-  top: 16px;
-  right: 20px;
-  width: 268px;
+button:active {
+  background: #23282d;
 }
 
-.bottom-left {
-  bottom: 18px;
-  left: 20px;
+button[aria-pressed="true"] {
+  border-color: var(--muted);
 }
 
-.bottom-right {
-  bottom: 18px;
-  right: 20px;
+button.danger {
+  border-color: var(--alarm);
+  color: var(--alarm);
 }
 
-.instruments {
-  bottom: 18px;
+:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+kbd {
+  font: inherit;
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+.row {
+  display: flex;
+  gap: var(--s1);
+  flex-wrap: wrap;
+}
+
+/* --- G readout, bottom centre ------------------------------------------- */
+.gpanel {
+  bottom: var(--s2);
   left: 50%;
   transform: translateX(-50%);
-  display: flex;
-  gap: 20px;
-}
-
-.controls {
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 8px;
-  padding: 8px;
-}
-
-.label {
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  color: var(--hud-dim);
-  text-transform: uppercase;
-}
-
-.muted {
-  margin-top: 6px;
-  font-size: 10px;
-  color: var(--hud-dim);
-}
-
-/* --- route progress ------------------------------------------------------- */
-.route-name {
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  color: var(--hud-dim);
-  text-transform: uppercase;
-}
-
-.leg {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin: 6px 0;
-}
-
-.leg-index {
-  font-size: 11px;
-  color: var(--hud-dim);
-}
-
-.leg-label {
-  font-size: 14px;
-  line-height: 1.25;
-}
-
-.bar {
-  height: 4px;
-  background: rgba(125, 255, 168, 0.14);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-top: 5px;
-}
-
-.bar.total {
-  height: 2px;
-  opacity: 0.6;
-}
-
-.bar-fill {
-  height: 100%;
-  background: var(--hud);
-}
-
-/* --- G meter -------------------------------------------------------------- */
-.gmeter-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  width: min(560px, calc(100vw - 32px));
+  padding: 20px 24px 16px;
 }
 
 .gvalue {
-  font-size: 44px;
-  font-weight: 600;
+  font-size: 88px;
+  letter-spacing: -0.04em;
   line-height: 1;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.gscale {
-  margin-top: 8px;
+.gvalue[data-over="true"] {
+  color: var(--accent);
 }
 
-.gscale-track {
+.gunit {
+  font-size: 24px;
+  letter-spacing: 0;
+  color: var(--muted);
+  margin-left: 6px;
+}
+
+.gbar {
   position: relative;
-  height: 10px;
-  background: rgba(125, 255, 168, 0.12);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.gscale-fill {
-  height: 100%;
-}
-
-/* The 1 G datum and the G the route asked for. */
-.gscale-zero,
-.gscale-cmd {
-  position: absolute;
-  top: 0;
-  width: 1px;
-  height: 100%;
-}
-
-.gscale-zero {
-  background: rgba(255, 255, 255, 0.5);
-}
-
-.gscale-cmd {
-  width: 2px;
-  background: #fff;
-  box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
-}
-
-.gscale-marks {
-  display: flex;
-  justify-content: space-between;
-  font-size: 9px;
-  color: var(--hud-dim);
-  margin-top: 2px;
-}
-
-.cuff {
-  margin-top: 10px;
-}
-
-.cuff-track {
   height: 14px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(125, 255, 168, 0.25);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-top: 3px;
+  margin-top: var(--s2);
+  background: #0c0e10;
+  border: 1px solid var(--line);
 }
 
-.cuff-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #4bd6ff, #ff6b6b);
-  transition: width 90ms linear;
+.gbar-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--text);
+  transform-origin: left;
 }
 
-.warn {
-  margin-top: 8px;
-  font-size: 10px;
-  color: var(--warn);
-  letter-spacing: 0.06em;
+.gbar-fill[data-over="true"] {
+  background: var(--accent);
 }
 
-/* --- cuff link badge ------------------------------------------------------ */
-.badge {
+/* one notch per G, drawn over the fill so the scale reads as steps */
+.gbar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0,
+    transparent calc(9.0909% - 2px),
+    var(--panel) calc(9.0909% - 2px),
+    var(--panel) 9.0909%
+  );
+  pointer-events: none;
+}
+
+.gbar-full,
+.gbar-cmd {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+}
+
+.gbar-full {
+  background: var(--accent);
+}
+
+.gbar-cmd {
+  background: var(--muted);
+}
+
+.gticks {
+  position: relative;
+  height: 16px;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.gticks span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+.gticks span:first-child {
+  transform: none;
+}
+
+.gticks span:last-child {
+  transform: translateX(-100%);
+}
+
+.gwarn {
+  margin-top: var(--s1);
+  color: var(--accent);
+}
+
+/* --- controls, bottom right --------------------------------------------- */
+.controls {
+  bottom: var(--s2);
+  right: var(--s2);
+  display: flex;
+  gap: var(--s1);
+}
+
+/* --- key reference, top left, one row ---------------------------------- */
+.keyhints {
+  top: var(--s2);
+  left: var(--s2);
+  margin: 0;
+  padding: 10px var(--s2);
+  list-style: none;
+  display: flex;
+  gap: var(--s2);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.keyhints kbd {
+  margin: 0 4px 0 0;
+  color: var(--text);
+}
+
+/* --- cuff status, top right --------------------------------------------- */
+.cuff-panel {
+  top: var(--s2);
+  right: var(--s2);
+  width: 280px;
+  display: grid;
+  gap: var(--s1);
+}
+
+.cuff-status {
+  font-weight: 600;
+}
+
+.cuff-panel[data-status="killed"] .cuff-status {
+  color: var(--alarm);
+}
+
+.cuff-panel[data-status="offline"] .cuff-status,
+.cuff-panel[data-status="connecting"] .cuff-status {
+  color: var(--muted);
+}
+
+.cuff-fill-row {
   display: flex;
   align-items: center;
-  gap: 7px;
-  flex-wrap: wrap;
-  margin-top: 10px;
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  padding-top: 8px;
-  border-top: 1px solid rgba(125, 255, 168, 0.18);
+  gap: var(--s1);
 }
 
-.badge .dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
+.cuffbar {
+  position: relative;
+  flex: 1;
+  height: 8px;
+  background: #0c0e10;
+  border: 1px solid var(--line);
 }
 
-.badge.live {
-  color: var(--hud);
+.cuffbar-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--text);
+  transform-origin: left;
 }
 
-.badge.waiting {
-  color: var(--warn);
-}
-
-.badge.off {
-  color: rgba(255, 255, 255, 0.4);
-}
-
-.badge-note {
-  flex-basis: 100%;
-  font-size: 9px;
-  letter-spacing: 0.02em;
-  opacity: 0.8;
-}
-
-/* --- instruments ---------------------------------------------------------- */
-.readout {
-  min-width: 62px;
-  text-align: center;
-}
-
-.readout .value {
-  font-size: 22px;
+.cuff-fill-val {
+  width: 40px;
+  text-align: right;
   font-variant-numeric: tabular-nums;
-  line-height: 1.15;
 }
 
-.readout .unit {
-  font-size: 9px;
-  color: var(--hud-dim);
+/* --- framing line ------------------------------------------------------- */
+.honesty {
+  position: absolute;
+  bottom: 4px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 10px;
+  color: var(--muted);
 }
 
-/* --- map and profile ------------------------------------------------------ */
-.routemap .label,
-.gprofile .label {
-  margin-bottom: 5px;
-}
-
-.rm-n {
-  font-size: 9px;
-  fill: var(--hud-dim);
-  font-family: var(--mono);
-}
-
-.gp-tick {
-  font-size: 8px;
-  fill: var(--hud-dim);
-  font-family: var(--mono);
+@media (max-width: 720px) {
+  .keyhints {
+    display: none;
+  }
+  .controls {
+    bottom: auto;
+    top: 140px;
+  }
+  .gvalue {
+    font-size: 40px;
+  }
 }

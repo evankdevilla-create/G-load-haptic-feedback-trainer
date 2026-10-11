@@ -13,13 +13,14 @@
  *               -> Arduino -> relay -> pump + valve -> cuff
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEMO_ROUTE } from "./flight/route";
 import { useFlight, useSampled } from "./flight/useFlight";
 import { usePilotInput } from "./input/usePilotInput";
 import { CuffPanel } from "./hud/CuffPanel";
 import { Hud } from "./hud/Hud";
 import { Scene } from "./scene/Scene";
+import type { CameraView } from "./scene/Scene";
 import { useCuffLink } from "./telemetry/useCuffLink";
 import { useVoiceCallouts } from "./voice/useVoiceCallouts";
 
@@ -27,7 +28,11 @@ export function App() {
   const route = DEMO_ROUTE;
   const pilot = usePilotInput();
   const flight = useFlight(route, pilot);
-  const [cuffEnabled, setCuffEnabled] = useState(true);
+  // ?cuff=off starts with the cuff link disabled, ?view=cockpit starts in the cockpit view (chase is the default).
+  // Both exist so screenshots and tests can run the sim without driving a real cuff.
+  const params = useMemo(() => new URLSearchParams(window.location.search), []);
+  const [cuffEnabled, setCuffEnabled] = useState(params.get("cuff") !== "off");
+  const [view, setView] = useState<CameraView>(params.get("view") === "cockpit" ? "cockpit" : "chase");
 
   const link = useCuffLink(flight.stateRef, flight.lastStepAtRef, route, {
     enabled: cuffEnabled,
@@ -39,7 +44,6 @@ export function App() {
   // The physics runs at 100 Hz but React only needs to redraw the HUD at 20.
   const hudState = useSampled(() => flight.stateRef.current, 20);
 
-  const cuffG = hudState.g;
   const { release } = pilot;
   const { toggleKill, panicVent } = link;
   const { toggleMute } = voice;
@@ -70,6 +74,7 @@ export function App() {
       else if (e.code === "KeyK") toggleKillSafely();
       else if (e.code === "KeyX") panic();
       else if (e.code === "KeyV") toggleMute();
+      else if (e.code === "KeyC") setView((v) => (v === "cockpit" ? "chase" : "cockpit"));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -77,11 +82,12 @@ export function App() {
 
   return (
     <>
-      <Scene flight={flight} />
+      <Scene flight={flight} view={view} />
       <Hud
         state={hudState}
         running={flight.running}
         mode={flight.mode}
+        view={view}
         cuffEnabled={cuffEnabled}
         onToggleRunning={flight.toggleRunning}
         onRestart={flight.restart}
@@ -90,7 +96,6 @@ export function App() {
       <div className="overlay">
         <CuffPanel
           status={link.status}
-          g={cuffG}
           onToggleKill={toggleKillSafely}
           onPanicVent={panic}
           muted={voice.muted}

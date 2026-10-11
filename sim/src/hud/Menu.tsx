@@ -26,6 +26,26 @@ export interface MenuProps {
   onToggleMute: () => void;
 }
 
+/** The aircraft model's credit line, read from /models/credit.txt next to the model, if present. */
+function useModelCredit(): string | null {
+  const [text, setText] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/models/credit.txt")
+      .then(async (r) => {
+        const type = r.headers.get("content-type") ?? "";
+        if (!r.ok || type.includes("text/html")) return;
+        const body = (await r.text()).trim();
+        if (!cancelled && body) setText(body.slice(0, 300));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return text;
+}
+
 export function Menu(p: MenuProps) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -41,6 +61,7 @@ export function Menu(p: MenuProps) {
   }, [open]);
 
   const killed = p.cuffStatus === "killed";
+  const credit = useModelCredit();
   return (
     <div className="menu interactive" ref={root}>
       <button
@@ -99,6 +120,7 @@ export function Menu(p: MenuProps) {
           />
           <h2>Keys</h2>
           <KeyHints mode={p.mode} />
+          {credit && <p className="menu-credit">{credit}</p>}
         </div>
       )}
     </div>

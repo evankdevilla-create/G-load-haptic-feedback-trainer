@@ -6,3 +6,7 @@ bridge/logs/
 firmware/test/test_logic
 sim/node_modules/
 sim/dist/
+
+# F-35 model with a non-commercial / personal-use license: never commit it to the public repo
+sim/public/models/*.glb
+sim/public/models/credit.txt

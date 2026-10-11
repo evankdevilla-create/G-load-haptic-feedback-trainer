@@ -619,3 +619,12 @@ kbd {
   gap: 4px;
   margin: 0;
 }
+
+.menu-credit {
+  margin: var(--s1) 0 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+.menu-credit a {
+  color: var(--text);
+}

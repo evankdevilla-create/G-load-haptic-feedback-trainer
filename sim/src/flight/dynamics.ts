@@ -58,7 +58,7 @@ const ALPHA_STALL = 0.26;
 /** Structural limit. The cuff never sees more than this. */
 export const N_STRUCTURAL_MAX = 10;
 /** The most negative G we will model. */
-export const N_STRUCTURAL_MIN = -9;
+export const N_STRUCTURAL_MIN = -3;
 
 // --- how fast the pilot can change things ----------------------------------
 /** Onset rate, G per second. A real pull is not a step change. */
@@ -312,7 +312,7 @@ export function step(s: FlightState, route: Route, dt: number = PHYSICS_DT): Fli
 /** Highest load factor the pilot can ask for. Full pull in level flight gets here. */
 export const PILOT_MAX_G = 10;
 /** Most negative load factor the pilot can ask for. */
-export const PILOT_MIN_G = -9;
+export const PILOT_MIN_G = -1.5;
 /** Speed that throttle 0.5 holds. Route-independent, unlike the scripted sorties. */
 const MANUAL_SPEED = 220;
 /** Max bank from full roll input, rad. Short of 90 so 1/cos(bank) stays sane. */

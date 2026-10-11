@@ -1,7 +1,7 @@
-# G-load haptic feedback trainer (hackPHS 2026)
+# G-Hug (hackPHS 2026)
 
 A thigh pressure cuff that inflates in proportion to live G-load from a flight sim, like a G-suit bladder.
-It is a G-load haptic feedback trainer, not a G-force simulator.
+G-Hug is a G-load haptic feedback trainer, not a G-force simulator.
 
 ```
 sim / demo -> bridge/bridge.py (laptop) -> USB serial "G:<float>\n" @ 20 Hz -> Arduino Uno -> relays -> pump + vent solenoid -> cuff

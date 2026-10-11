@@ -3,7 +3,7 @@
 Fill **[brackets]** with real data. Paste section by section into Devpost.
 
 ## Name
-G-Load Haptic Trainer
+G-Hug
 
 ## Tagline
 Feel the squeeze of a G-suit in your flight sim, for under **[total]** dollars.

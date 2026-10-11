@@ -1,11 +1,11 @@
-# Pitch script (~2 minutes + live demo)
+# G-Hug pitch script (~2 minutes + live demo)
 
 Blanks in **[brackets]** need real numbers before you say them. Don't fill them with guesses.
 
 ## 1. Hook (15 s)
 "Pilots pulling hard turns get squeezed by their G-suit. Inflatable bladders on the legs push harder the more G they
 pull. Sim pilots never feel that. A home motion platform like Qubic's three-axis QS-210 costs €6,680 before tax.
-We built a cuff that gives you the G-suit squeeze for **[total from receipts]** dollars."
+We built G-Hug, a cuff that gives you the G-suit squeeze for **[total from receipts]** dollars."
 
 ## 2. What it is, and what it isn't (15 s)
 "To be clear: this is a **G-load haptic feedback trainer**, not a G-force simulator. Real G needs real acceleration.

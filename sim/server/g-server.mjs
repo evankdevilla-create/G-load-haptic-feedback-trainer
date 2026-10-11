@@ -35,6 +35,23 @@ const STALE_MS = Number(process.env.STALE_MS ?? 400);
 /** Matches FlightGear: a lightly filtered companion to the raw value. */
 const DAMPED_ALPHA = 0.25;
 
+/** Largest G the sim can legitimately report. */
+const MAX_G = 12;
+
+/** Only the sim's own pages may talk to us from a browser: Vite dev ports and preview. */
+const ALLOWED_ORIGINS = new Set();
+for (const host of ["127.0.0.1", "localhost"]) {
+  for (let p = 5173; p <= 5210; p++) ALLOWED_ORIGINS.add(`http://${host}:${p}`);
+  ALLOWED_ORIGINS.add(`http://${host}:4173`);
+}
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1"]);
+
+/** Host header must name us, or a rebound DNS name could reach this server. */
+function hostOk(req) {
+  const host = req.headers.host ?? "";
+  return LOCAL_HOSTS.has(host.replace(/:\d+$/, ""));
+}
+
 const PROP_RAW = "/accelerations/pilot-g";
 const PROP_DAMPED = "/accelerations/pilot-gdamped";
 
@@ -54,10 +71,11 @@ function propertyBody(path, value) {
 }
 
 function send(res, status, body, type = "application/json") {
+  const origin = res.req.headers.origin;
   res.writeHead(status, {
     "Content-Type": type,
     "Content-Length": Buffer.byteLength(body),
-    "Access-Control-Allow-Origin": "*",
+    ...(ALLOWED_ORIGINS.has(origin) ? { "Access-Control-Allow-Origin": origin, Vary: "Origin" } : {}),
     "Cache-Control": "no-store",
   });
   res.end(body);
@@ -82,13 +100,24 @@ function noteLiveness() {
   );
 }
 
-const server = createServer((req, res) => {
+/** A request (headers + body) must arrive within this, or the socket is dropped (slowloris). */
+const READ_TIMEOUT_MS = 2000;
+
+const server = createServer(
+  { headersTimeout: READ_TIMEOUT_MS, requestTimeout: READ_TIMEOUT_MS, connectionsCheckingInterval: 500 },
+  (req, res) => {
   const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
+
+  const origin = req.headers.origin;
+  if (!hostOk(req) || (origin !== undefined && !ALLOWED_ORIGINS.has(origin) && req.method !== "GET")) {
+    send(res, 403, JSON.stringify({ error: "forbidden" }));
+    return;
+  }
 
   // The browser preflights the POST because it is a cross-origin JSON request.
   if (req.method === "OPTIONS") {
     res.writeHead(204, {
-      "Access-Control-Allow-Origin": "*",
+      ...(ALLOWED_ORIGINS.has(origin) ? { "Access-Control-Allow-Origin": origin, Vary: "Origin" } : {}),
       "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
       "Access-Control-Max-Age": "86400",
@@ -99,16 +128,28 @@ const server = createServer((req, res) => {
 
   // --- the sim pushes its current G here -----------------------------------
   if (req.method === "POST" && url.pathname === "/g") {
+    // A text/plain no-cors POST needs no preflight, so insist on real JSON.
+    const type = (req.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase();
+    if (type !== "application/json") {
+      req.resume();
+      send(res, 415, JSON.stringify({ error: "Content-Type must be application/json" }));
+      return;
+    }
     let raw = "";
+    let tooBig = false;
     req.on("data", (chunk) => {
       raw += chunk;
-      if (raw.length > 4096) req.destroy(); // nothing legitimate is this big
+      if (raw.length > 4096) {
+        tooBig = true;
+        req.destroy(); // nothing legitimate is this big
+      }
     });
     req.on("end", () => {
+      if (tooBig) return;
       try {
         const { g, leg } = JSON.parse(raw);
-        if (typeof g !== "number" || !Number.isFinite(g)) {
-          send(res, 400, JSON.stringify({ error: "g must be a finite number" }));
+        if (typeof g !== "number" || !Number.isFinite(g) || g < 0 || g > MAX_G) {
+          send(res, 400, JSON.stringify({ error: `g must be a number from 0 to ${MAX_G}` }));
           return;
         }
         const damped =
@@ -165,7 +206,8 @@ const server = createServer((req, res) => {
   }
 
   send(res, 404, JSON.stringify({ error: "not found" }));
-});
+  },
+);
 
 server.listen(PORT, "127.0.0.1", () => {
   console.log(`G server on http://127.0.0.1:${PORT}`);

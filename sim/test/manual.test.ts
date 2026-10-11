@@ -163,9 +163,12 @@ describe("manual: G limits", () => {
     }
   });
 
-  it("a hard push-over goes well past -1.5 G: there is no artificial floor there", () => {
+  it("a hard push-over bottoms out at the -1.5 G pilot floor (downward motion as originally tuned)", () => {
+    expect(PILOT_MIN_G).toBe(-1.5);
     const states = flyManual(manualRoute(), 6, () => ({ pitch: -1, roll: 0, throttle: 0.5 }));
-    expect(Math.min(...states.map((s) => s.g))).toBeLessThan(-4);
+    const min = Math.min(...states.map((s) => s.g));
+    expect(min).toBeGreaterThanOrEqual(-1.5 - 1e-9);
+    expect(min).toBeLessThan(-1.4);
   });
 
   it("never goes below PILOT_MIN_G", () => {

@@ -14,7 +14,7 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { FlightController } from "../flight/useFlight";
 import { chaseCamera } from "./chaseCam";
-import { Jet } from "./Jet";
+import { Afterburner, Jet } from "./Jet";
 import {
   GROUND_SIZE,
   makeGroundTexture,
@@ -93,7 +93,16 @@ function Ground() {
   );
 }
 
-export function Scene({ flight, view = "cockpit" }: { flight: FlightController; view?: CameraView }) {
+export function Scene({
+  flight,
+  view = "cockpit",
+  getThrottle = () => 0.5,
+}: {
+  flight: FlightController;
+  view?: CameraView;
+  /** Current throttle 0..1, for the exhaust flame length. */
+  getThrottle?: () => number;
+}) {
   const jetRef = useRef<THREE.Group>(null);
   return (
     <Canvas
@@ -105,6 +114,7 @@ export function Scene({ flight, view = "cockpit" }: { flight: FlightController; 
       <PilotCamera flight={flight} view={view} jetRef={jetRef} />
       <group ref={jetRef} visible={false}>
         <Jet />
+        <Afterburner getThrottle={getThrottle} isCrashed={() => !!flight.stateRef.current.crashed} />
       </group>
 
       {/* Haze, so distant ground fades instead of ending in a hard edge. */}

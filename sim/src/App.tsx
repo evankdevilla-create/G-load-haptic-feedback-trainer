@@ -81,7 +81,7 @@ export function App() {
 
   return (
     <>
-      <Scene flight={flight} view={view} />
+      <Scene flight={flight} view={view} getThrottle={() => pilot.inputRef.current.throttle} />
       <Hud
         state={hudState}
         running={flight.running}

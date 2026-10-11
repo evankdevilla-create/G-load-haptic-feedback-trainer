@@ -1,25 +1,18 @@
 /**
- * Cuff link status and the safety buttons.
+ * The cuff safety buttons, and nothing else.
  * Buttons are blurred after use so Space/arrows keep flying; no key handlers here.
+ * The kill button reads "Restore link" while the link is killed, so its label
+ * is the only state shown.
  */
 
 import type { MouseEvent } from "react";
-import { commandedFill, fillLabel } from "../cuff/cuffModel";
 import type { CuffDisplayStatus } from "../telemetry/useCuffLink";
-
-const STATUS_TEXT: Record<CuffDisplayStatus, string> = {
-  live: "Cuff live",
-  connecting: "Connecting",
-  offline: "No cuff, sim only",
-  killed: "Link killed, venting",
-};
 
 // keeps focus off the button so flight keys (Space) never re-trigger it
 const release = (e: MouseEvent<HTMLButtonElement>) => e.currentTarget.blur();
 
 export function CuffPanel({
   status,
-  g,
   onToggleKill,
   onPanicVent,
   muted,
@@ -27,7 +20,6 @@ export function CuffPanel({
   onToggleMute,
 }: {
   status: CuffDisplayStatus;
-  g: number;
   onToggleKill: () => void;
   onPanicVent: () => void;
   muted: boolean;
@@ -35,26 +27,9 @@ export function CuffPanel({
   onToggleMute: () => void;
 }) {
   const killed = status === "killed";
-  const fill = Math.max(0, Math.min(1, commandedFill(g)));
 
   return (
-    <section className="panel cuff-panel interactive" aria-label="Cuff status" data-status={status}>
-      <div className="cuff-status" role="status">
-        {STATUS_TEXT[status]}
-      </div>
-      <div className="cuff-fill-row">
-        <div
-          className="cuffbar"
-          role="meter"
-          aria-label="Commanded cuff fill"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(fill * 100)}
-        >
-          <div className="cuffbar-fill" style={{ transform: `scaleX(${killed ? 0 : fill})` }} />
-        </div>
-        <span className="cuff-fill-val">{killed ? "vent" : fillLabel(fill)}</span>
-      </div>
+    <section className="panel cuff-panel interactive" aria-label="Cuff controls" data-status={status}>
       <div className="row">
         <button
           aria-label={killed ? "Restore bridge link (K)" : "Kill bridge link (K)"}
@@ -84,7 +59,7 @@ export function CuffPanel({
               release(e);
             }}
           >
-            Voice <kbd>V</kbd>
+            Voice callouts <kbd>V</kbd>
           </button>
         )}
       </div>

@@ -7,6 +7,8 @@
   --muted: #8b939a;
   --accent: #f0a63a; /* past 6 G, where the cuff is already full */
   --alarm: #e5534b;
+  --zone-base: #7fb6e6; /* cuff at preload / G near 1 */
+  --zone-hot: #ff7b72; /* near full, extreme G (>=4.5:1 on panel) */
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --s1: 8px;
   --s2: 16px;
@@ -103,7 +105,7 @@ kbd {
   bottom: var(--s2);
   left: 50%;
   transform: translateX(-50%);
-  width: min(560px, calc(100vw - 32px));
+  width: min(560px, calc(100vw - 560px));
   padding: 20px 24px 16px;
 }
 
@@ -117,6 +119,19 @@ kbd {
 
 .gvalue[data-over="true"] {
   color: var(--accent);
+}
+
+.gvalue[data-zone="extreme"] {
+  color: var(--zone-hot);
+}
+
+.gvalue {
+  transition: color 0.2s ease-out, transform 0.2s ease-out;
+  transform-origin: left center;
+}
+
+.gvalue[data-zone="extreme"] {
+  transform: scale(1.06);
 }
 
 .gunit {
@@ -141,8 +156,20 @@ kbd {
   transform-origin: left;
 }
 
-.gbar-fill[data-over="true"] {
+.gbar-fill[data-zone="idle"] {
+  background: var(--muted);
+}
+
+.gbar-fill[data-zone="ramp"] {
+  background: var(--zone-base);
+}
+
+.gbar-fill[data-zone="full"] {
   background: var(--accent);
+}
+
+.gbar-fill[data-zone="extreme"] {
+  background: var(--zone-hot);
 }
 
 /* one notch per G, drawn over the fill so the scale reads as steps */
@@ -190,6 +217,10 @@ kbd {
   transform: translateX(-50%);
 }
 
+.gticks span[data-full="true"] {
+  color: var(--accent);
+}
+
 .gticks span:first-child {
   transform: none;
 }
@@ -215,18 +246,45 @@ kbd {
 .keyhints {
   top: var(--s2);
   left: var(--s2);
+  max-width: calc(50vw - 180px);
   margin: 0;
-  padding: 10px var(--s2);
-  list-style: none;
-  display: flex;
-  gap: var(--s2);
+  padding: 8px 12px;
   color: var(--muted);
-  white-space: nowrap;
+  font-size: 12px;
 }
 
 .keyhints kbd {
   margin: 0 4px 0 0;
   color: var(--text);
+}
+
+/* --- flight data, top centre ------------------------------------------- */
+.flightstrip {
+  top: var(--s2);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: var(--s2);
+  padding: 6px 12px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.fs-k {
+  color: var(--muted);
+  font-size: 10px;
+  margin-right: 6px;
+}
+
+.fs-v {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.fs-u {
+  color: var(--muted);
+  font-size: 11px;
+  margin-left: 2px;
 }
 
 /* --- cuff status, top right --------------------------------------------- */
@@ -268,8 +326,40 @@ kbd {
 .cuffbar-fill {
   position: absolute;
   inset: 0;
-  background: var(--text);
+  background: var(--zone-base);
   transform-origin: left;
+}
+
+.cuffbar-fill[data-zone="rising"],
+.cuff-cap [data-zone="rising"] {
+  background: var(--accent);
+}
+
+.cuffbar-fill[data-zone="near-full"],
+.cuff-cap [data-zone="near-full"] {
+  background: var(--zone-hot);
+}
+
+.cuff-cap {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+/* zone word: coloured text, not a filled chip */
+.cuff-cap [data-zone] {
+  background: none !important;
+  letter-spacing: 0;
+}
+.cuff-cap [data-zone="baseline"] { color: var(--zone-base); }
+.cuff-cap [data-zone="rising"] { color: var(--accent); }
+.cuff-cap [data-zone="near-full"] { color: var(--zone-hot); }
+
+.cuff-note {
+  font-size: 11px;
+  color: var(--muted);
 }
 
 .cuff-fill-val {
@@ -279,14 +369,87 @@ kbd {
 }
 
 /* --- framing line ------------------------------------------------------- */
-.honesty {
-  position: absolute;
-  bottom: 4px;
-  left: 0;
-  right: 0;
-  text-align: center;
-  font-size: 10px;
+.honest-note {
+  margin: var(--s1) 0 0;
+  font-size: 12px;
   color: var(--muted);
+}
+
+.sat-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--s1);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cuffbar-base {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--text);
+}
+
+.squeezebar {
+  height: 14px;
+}
+
+.squeezebar-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  transform-origin: left;
+}
+
+.squeeze-val {
+  width: 56px;
+  text-align: right;
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.keyhints-line {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+}
+
+.keyhints-toggle {
+  min-width: 32px;
+  padding: 4px 8px;
+  flex: none;
+}
+
+.keyhints ul {
+  list-style: none;
+  margin: var(--s1) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.horizon {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  font-family: var(--mono);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gvalue {
+    transition: none;
+  }
+  .gvalue[data-zone="extreme"] {
+    transform: none;
+  }
 }
 
 @media (max-width: 720px) {
@@ -299,5 +462,8 @@ kbd {
   }
   .gvalue {
     font-size: 40px;
+  }
+  .flightstrip {
+    top: 72px;
   }
 }

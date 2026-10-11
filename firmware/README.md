@@ -17,7 +17,7 @@ Open `trainer_logic.h` and change these in `TrainerConfig`:
 | Setting | Meaning | Current value (01, hand-timed on the leg) |
 |---|---|---|
 | `inflateMs` | pump time, empty → comfortably firm | 30000 |
-| `ventMs` | vent time, firm → completely empty (measured 1 s from the preload baseline, so 1.0 / 0.83) | 1200 |
+| `ventMs` | vent time, firm → completely empty (starting point, real vent is non-linear; tune live with `VENTMS:<n>`) | 3000 |
 | `pumpMaxRunMs` | hard cap on one pump run; keep it above `inflateMs` | 35000 |
 | `preloadMs` | pump time from empty to the baseline held at 1 G (0 = no preload) | 25000 |
 | `gFull` | G that means a full squeeze | 6.0 |
@@ -28,11 +28,13 @@ Tools → Serial Monitor, set **115200 baud** and **Newline**. Type:
 
 | Type | Expect |
 |---|---|
-| `TEST` | inflate 2 s, then vent 2 s |
+| `TEST` | inflate 2 s, then vent 2 s (one-shot, 10 s cooldown, ignored after STOP) |
 | `G:6.0` (keep resending) | inflates to full, then holds |
 | `G:1.0` | vents |
 | `STATUS` | one line: g, target, fill estimate, mode |
 | `STOP` | vents immediately |
+| `VENTMS:3000` | sets the vent time (500 to 10000 ms, runtime only); `STATUS` shows `ventms=` |
+| `CLEAR` | clears a `FAULT` (output watchdog tripped; outputs stay off until then) |
 
 Typing a single `G:6.0` and waiting will vent after 0.5 s: that's the dead-man safety working, because the
 real script sends 20 lines a second. Use `TEST` for hand checks, or run `bridge.py --demo`.
@@ -52,6 +54,9 @@ There's no pressure sensor, so the sketch estimates how full the cuff is from ho
 - No valid line for 500 ms → vent.
 - Pump run capped at `pumpMaxRunMs`; locked out until the cuff has fully vented.
 - Pump never runs with the valve open.
+- Pump budget: at most `pumpWindowBudgetMs` (60 s) of pump-on time in any rolling 120 s, so flapping or repeated TESTs cannot dodge the per-run cap.
+- Full-hold limit: fill at 0.95+ for `fullHoldMaxMs` (20 s) forces a vent to the baseline until G drops below 2.
+- Output watchdog: pump relay continuously on past `pumpMaxRunMs` + 2 s latches `FAULT` (both relays off, G lines ignored) until `CLEAR`.
 - Watchdog resets the board if the code hangs. A reset or unplugged board leaves every relay off = valve open = vented.
 - Overlong or garbage serial lines are dropped.
 

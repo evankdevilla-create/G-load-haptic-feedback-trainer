@@ -2,6 +2,7 @@
 // Run:  g++ -std=c++11 -Wall -I../g_trainer test_logic.cpp -o test_logic && ./test_logic
 
 #include <cstdio>
+#include <vector>
 #include "trainer_logic.h"
 
 static int failures = 0;
@@ -181,7 +182,7 @@ int main() {
 
   {
     TrainerConfig real;  // the real defaults measured by 01: 30 s to firm, 25 s preload, 35 s cap
-    CHECK(real.inflateMs == 30000 && real.ventMs == 1200 && real.pumpMaxRunMs == 35000 && real.preloadMs == 25000,
+    CHECK(real.inflateMs == 30000 && real.ventMs == 3000 && real.pumpMaxRunMs == 35000 && real.preloadMs == 25000,
           "defaults match 01's on-leg measurements");
     Trainer t(real);
     bool bad = false;
@@ -191,10 +192,9 @@ int main() {
     CHECK(t.fillEstimate() > 0.99f && !t.lockedOut(), "real defaults: top-up to full stays under the pump cap");
     CHECK(!bad, "real defaults: pump never runs with valve open");
 
-    // 01 measured the vent on the rig: baseline -> flat in 1 s, so 6 G -> 1 G only
-    // needs ~0.2 s of open valve (full to baseline is 17% of the 1.2 s full vent).
-    now = run(t, now, 500, 1.0f, &bad);
-    CHECK(t.fillEstimate() > 0.80f && t.fillEstimate() < 0.87f, "real defaults: back to the baseline after 0.5 s, no overshoot");
+    // ventMs 3000: 6 G -> 1 G needs ~0.5 s of open valve (full to baseline is 17% of 3 s).
+    now = run(t, now, 700, 1.0f, &bad);
+    CHECK(t.fillEstimate() > 0.80f && t.fillEstimate() < 0.87f, "real defaults: back to the baseline after 0.7 s, no overshoot");
     CHECK(t.currentMode() == MODE_HOLD, "real defaults: holds (valve shut) at the baseline once vented");
   }
 
@@ -203,6 +203,291 @@ int main() {
     unsigned long start = 0xFFFFFFFFUL - 2000;  // millis() wraps after ~49 days
     run(t, start, 9000, 6.0f);
     CHECK(t.fillEstimate() > 0.99f, "survives millis() rollover");
+  }
+
+
+  // ---- Full-hold limit: sustained high G must not hold the cuff full forever ----
+  {
+    TrainerConfig p = cfg;
+    p.preloadMs = 5000;  // baseline 0.625
+    Trainer t(p);
+    bool bad = false;
+    unsigned long now = 1000, fullFor = 0, maxFull = 0;
+    for (int i = 0; i < 6000; i++, now += 10) {  // 60 s at 9 G
+      if (i % 5 == 0) t.handleLine("G:9.0", now);
+      t.update(now);
+      if (t.pump() && !t.valveClosed()) bad = true;
+      if (t.fillEstimate() >= p.fullHoldFill) fullFor += 10; else fullFor = 0;
+      if (fullFor > maxFull) maxFull = fullFor;
+    }
+    CHECK(maxFull <= p.fullHoldMaxMs + 300, "full-hold: never holds full longer than fullHoldMaxMs");
+    CHECK(maxFull >= p.fullHoldMaxMs - 100, "full-hold: does hold full for about fullHoldMaxMs first");
+    CHECK(t.fillEstimate() > 0.60f && t.fillEstimate() < 0.66f, "full-hold: forced down to the baseline and stays there at 9 G");
+    CHECK(t.target() >= 0.99f, "full-hold: raw target untouched (clamp is separate)");
+    CHECK(!bad, "full-hold: pump never runs with valve open");
+    now = run(t, now, 1000, 1.0f);            // G drops below 2
+    now = run(t, now, 5000, 6.0f);            // next pull
+    CHECK(t.fillEstimate() > 0.99f, "full-hold: re-arms after G drops, next pull fills again");
+  }
+
+  {
+    TrainerConfig p = cfg;
+    p.preloadMs = 5000;
+    Trainer t(p);
+    unsigned long now = run(t, 1000, 7000, 1.0f);   // preload
+    now = run(t, now, 15000, 6.0f);                  // pull shorter than the limit
+    CHECK(t.fillEstimate() > 0.99f, "full-hold: short pull stays full");
+    now = run(t, now, 1000, 1.0f);
+    now = run(t, now, 15000, 6.0f);                  // second short pull after a gap
+    CHECK(t.fillEstimate() > 0.99f, "full-hold: timer does not accumulate across pulls");
+  }
+
+  {
+    TrainerConfig p = cfg;
+    p.preloadMs = 5000;
+    Trainer t(p);
+    unsigned long now = run(t, 1000, 40000, 9.0f);  // clamped by now
+    run(t, now, 600, -1);
+    now += 600;
+    now = run(t, now, 5000, -1);
+    CHECK(t.fillEstimate() == 0.0f && !t.valveClosed(), "full-hold: dead-man while clamped still vents to empty");
+    Trainer u(p);
+    now = run(u, 1000, 15000, 6.0f);
+    u.handleLine("STOP", now);
+    run(u, now, 5000, -1);
+    CHECK(u.fillEstimate() == 0.0f && !u.valveClosed(), "full-hold: STOP while full vents to empty");
+  }
+
+  {
+    TrainerConfig p = cfg;
+    p.preloadMs = 5000;
+    Trainer t(p);
+    unsigned long start = 0xFFFFFFFFUL - 10000;
+    run(t, start, 40000, 9.0f);  // clamp timer spans the wrap
+    CHECK(t.fillEstimate() > 0.60f && t.fillEstimate() < 0.66f, "full-hold: clamp works across millis() rollover");
+  }
+
+  {
+    TrainerConfig real;
+    CHECK(real.fullHoldMaxMs == 20000 && real.fullHoldFill == 0.95f, "full-hold: defaults 20 s / 0.95");
+  }
+
+  // ---- Independent output guard: watches the real pump output, not the logic ----
+  {
+    OutputGuard g(10000);
+    bool pump = true, valve = true;
+    unsigned long now = 5000;
+    g.apply(pump, valve, now);
+    now += 12000;
+    pump = true; valve = true;
+    g.apply(pump, valve, now);
+    CHECK(!g.faulted() && pump && valve, "guard: pump on for exactly limit (10 s + 2 s grace) is not a fault");
+    now += 1;
+    pump = true; valve = true;
+    g.apply(pump, valve, now);
+    CHECK(g.faulted() && !pump && !valve, "guard: pump on past limit + 2 s latches a fault, both outputs off");
+    pump = true; valve = true;
+    g.apply(pump, valve, now + 10);
+    CHECK(!pump && !valve, "guard: fault keeps forcing both outputs off");
+    g.clear();
+    pump = true; valve = true;
+    g.apply(pump, valve, now + 20);
+    CHECK(!g.faulted() && pump && valve, "guard: CLEAR re-enables outputs");
+  }
+
+  {
+    OutputGuard g(10000);
+    bool pump, valve;
+    unsigned long now = 0;
+    for (int k = 0; k < 3; k++) {  // 8 s on, 1 s off, repeated: runs are never continuous > limit
+      for (int i = 0; i < 800; i++, now += 10) { pump = valve = true; g.apply(pump, valve, now); }
+      pump = false; valve = true; g.apply(pump, valve, now); now += 1000;
+    }
+    CHECK(!g.faulted(), "guard: an off period resets the continuous-run timer");
+    OutputGuard h(10000);
+    unsigned long start = 0xFFFFFFFFUL - 3000;  // wrap inside the run
+    for (unsigned long e = 0; e < 14000; e += 10) { pump = valve = true; h.apply(pump, valve, start + e); }
+    CHECK(h.faulted(), "guard: faults across millis() rollover too");
+  }
+
+  {
+    Trainer t(cfg);
+    CHECK(t.handleLine("CLEAR", 1000) == LINE_CLEAR, "CLEAR is recognised");
+  }
+
+  // ---- VENTMS: runtime vent tuning ----
+  {
+    Trainer t(cfg);
+    CHECK(t.handleLine("VENTMS:2500", 1000) == LINE_VENTMS && t.cfg.ventMs == 2500, "VENTMS:2500 accepted");
+    CHECK(t.handleLine("VENTMS:500", 1000) == LINE_VENTMS && t.cfg.ventMs == 500, "VENTMS lower bound 500 accepted");
+    CHECK(t.handleLine("VENTMS:10000", 1000) == LINE_VENTMS && t.cfg.ventMs == 10000, "VENTMS upper bound 10000 accepted");
+    unsigned long before = t.cfg.ventMs;
+    const char* bad[] = {"VENTMS:499", "VENTMS:10001", "VENTMS:0", "VENTMS:-800", "VENTMS:abc", "VENTMS:",
+                         "VENTMS:99999999999", "VENTMS:2500x", "VENTMS: 2500", "VENTMS:+2500", "VENTMS:2.5e3", "VENTMS"};
+    int ignored = 0;
+    for (const char* b : bad) ignored += t.handleLine(b, 1000) == LINE_IGNORED;
+    CHECK(ignored == 12 && t.cfg.ventMs == before, "bad VENTMS values ignored, ventMs unchanged");
+    TrainerConfig c = cfg;
+    Trainer u(c);
+    unsigned long inflate = u.cfg.inflateMs, pre = u.cfg.preloadMs, cap = u.cfg.pumpMaxRunMs;
+    u.handleLine("VENTMS:2000", 1000);
+    CHECK(u.cfg.inflateMs == inflate && u.cfg.preloadMs == pre && u.cfg.pumpMaxRunMs == cap, "VENTMS changes nothing else");
+  }
+
+
+  // ---- G: payload must be a clean finite number (no inf/nan/hex/trailing junk) ----
+  {
+    Trainer t(cfg);
+    const char* junk[] = {"G:inf", "G:nan", "G:INF", "G:NaN", "G:-inf", "G:infinity", "G:1e999", "G:-1e999",
+                          "G:0x10", "G:6.0abc", "G:", "G: 6", "G:6 "};
+    int ignored = 0;
+    for (const char* j : junk) ignored += t.handleLine(j, 1000) == LINE_IGNORED;
+    CHECK(ignored == 13, "inf/nan/INF/1e999/0x10/trailing junk/empty G payloads are all ignored");
+    CHECK(t.target() == 0.0f && t.g() == 0.0f, "ignored G lines change nothing");
+    CHECK(t.handleLine("G:6.0", 1000) == LINE_G && t.g() == 6.0f, "G:6.0 still handled");
+    CHECK(t.handleLine("G:6", 1000) == LINE_G && t.g() == 6.0f, "G:6 still handled");
+    CHECK(t.handleLine("G:6e0", 1000) == LINE_G && t.g() == 6.0f, "G:6e0 still handled");
+    CHECK(t.handleLine("G:-1", 1000) == LINE_G && t.g() == 0.0f, "G:-1 still handled (clamped to 0)");
+    CHECK(t.handleLine("G:+2.5", 1000) == LINE_G && t.g() == 2.5f, "G:+2.5 still handled");
+  }
+
+  // ---- Cumulative pump budget: rolling 120 s window ----
+  {
+    TrainerConfig b = cfg;
+    b.pumpMaxRunMs = 20000;
+    Trainer t(b);
+    bool bad = false;
+    std::vector<char> on;  // pump state per 10 ms
+    unsigned long now = 1000;
+    for (int cycle = 0; cycle < 40; cycle++) {  // 6 G / 1 G flapping, every cycle re-pumps
+      for (int k = 0; k < 2; k++) {
+        float g = k == 0 ? 6.0f : 1.0f;
+        for (unsigned long e = 0; e < 7000; e += 10, now += 10) {
+          if (e % 50 == 0) { char buf[16]; snprintf(buf, sizeof buf, "G:%.1f", g); t.handleLine(buf, now); }
+          t.update(now);
+          if (t.pump() && !t.valveClosed()) bad = true;
+          on.push_back(t.pump());
+        }
+      }
+    }
+    unsigned long worst = 0, win = 0, total = 0;
+    for (size_t i = 0; i < on.size(); i++) {
+      win += on[i] ? 10 : 0; total += on[i] ? 10 : 0;
+      if (i >= 12000) win -= on[i - 12000] ? 10 : 0;
+      if (win > worst) worst = win;
+    }
+    CHECK(worst <= b.pumpWindowBudgetMs + 50, "budget: flapping INFLATE/HOLD never exceeds the budget in any 120 s window");
+    CHECK(total > b.pumpWindowBudgetMs, "budget: the flapping scenario really did try to pump more than the budget");
+    CHECK(!bad, "budget: pump never runs with valve open");
+  }
+
+  {
+    TrainerConfig b = cfg;
+    b.pumpMaxRunMs = 20000;
+    Trainer t(b);
+    unsigned long now = 1000;
+    for (int i = 0; i < 9; i++) { now = run(t, now, 7000, 6.0f); now = run(t, now, 4500, 1.0f); }
+    CHECK(t.pumpUsedMs(now) >= b.pumpWindowBudgetMs - 100, "budget: gets exhausted by repeated pulls");
+    now = run(t, now, 7000, 6.0f);
+    CHECK(!t.pump(), "budget: exhausted -> no pumping even though the target is high");
+    now = run(t, now, 30000, 1.0f);
+    CHECK(t.pumpUsedMs(now) > 0, "budget: still counted 30 s later");
+    now = run(t, now, 130000, 1.0f);
+    CHECK(t.pumpUsedMs(now) == 0, "budget: window frees up after 125 s");
+    now = run(t, now, 9000, 6.0f);
+    CHECK(t.fillEstimate() > 0.99f, "budget: pumping works again after the window frees up");
+  }
+
+  {
+    TrainerConfig b = cfg;
+    b.pumpMaxRunMs = 20000;
+    Trainer t(b);
+    unsigned long now = 0xFFFFFFFFUL - 50000;  // window straddles the millis() wrap
+    for (int i = 0; i < 9; i++) { now = run(t, now, 7000, 6.0f); now = run(t, now, 4500, 1.0f); }
+    CHECK(t.pumpUsedMs(now) >= b.pumpWindowBudgetMs - 100 && t.pumpUsedMs(now) <= b.pumpWindowBudgetMs + 50,
+          "budget: counts correctly across millis() rollover");
+    now = run(t, now, 7000, 6.0f);
+    CHECK(!t.pump(), "budget: still enforced across millis() rollover");
+    now = run(t, now, 130000, 1.0f);
+    CHECK(t.pumpUsedMs(now) == 0, "budget: frees up across millis() rollover");
+  }
+
+  {
+    TrainerConfig r;
+    CHECK(r.pumpWindowBudgetMs == 60000 && r.testCooldownMs == 10000, "budget: defaults 60 s per window, 10 s test cooldown");
+  }
+
+  // ---- TEST is a one-shot with a cooldown, and respects STOP and the budget ----
+  {
+    Trainer t(cfg);
+    CHECK(t.handleLine("TEST", 1000) == LINE_TEST, "TEST: first one accepted");
+    t.update(1000);
+    CHECK(t.handleLine("TEST", 1500) == LINE_IGNORED, "TEST: ignored while one is running");
+    unsigned long now = 1000;
+    for (; now < 6000; now += 10) t.update(now);
+    CHECK(!t.isTesting(), "TEST: finished");
+    CHECK(t.handleLine("TEST", 6000) == LINE_IGNORED, "TEST: ignored during the cooldown after a test");
+    CHECK(t.handleLine("TEST", 6000 + 8000) == LINE_IGNORED, "TEST: still ignored just under 10 s after it ended");
+    CHECK(t.handleLine("TEST", 6000 + 11000) == LINE_TEST, "TEST: accepted again after the cooldown");
+  }
+
+  {
+    Trainer t(cfg);
+    unsigned long start = 0xFFFFFFFFUL - 3000;
+    t.handleLine("TEST", start);
+    unsigned long now = start;
+    for (int i = 0; i < 500; i++, now += 10) t.update(now);
+    CHECK(!t.isTesting() && t.handleLine("TEST", now) == LINE_IGNORED, "TEST: cooldown holds across millis() rollover");
+    CHECK(t.handleLine("TEST", now + 11000) == LINE_TEST, "TEST: cooldown ends across millis() rollover");
+  }
+
+  {
+    Trainer t(cfg);
+    t.handleLine("STOP", 1000);
+    CHECK(t.handleLine("TEST", 1010) == LINE_IGNORED, "TEST: ignored while STOP is active");
+    t.update(1010);
+    CHECK(!t.pump(), "TEST: STOP keeps the pump off");
+    Trainer u(cfg);
+    u.handleLine("TEST", 1000);
+    u.update(1000); u.update(1500);
+    CHECK(u.pump(), "TEST: pumps (before STOP)");
+    u.handleLine("STOP", 1600);
+    u.update(1610);
+    CHECK(!u.pump() && !u.valveClosed() && !u.isTesting(), "TEST: STOP aborts a running test and vents");
+  }
+
+  {
+    TrainerConfig b = cfg;
+    b.pumpMaxRunMs = 20000;
+    b.pumpWindowBudgetMs = 3000;
+    b.testPhaseMs = 2000;
+    Trainer t(b);
+    t.handleLine("TEST", 1000);
+    bool pumped = false;
+    unsigned long now = 1000;
+    for (; now < 5000; now += 10) { t.update(now); pumped = pumped || t.pump(); }
+    CHECK(pumped, "TEST budget: first test pumps");
+    unsigned long on = 0;
+    for (int k = 0; k < 8; k++) {
+      now += 10500;  // past the cooldown each time
+      t.handleLine("TEST", now);
+      for (unsigned long e = 0; e < 4000; e += 10, now += 10) { t.update(now); on += t.pump() ? 10 : 0; }
+    }
+    CHECK(t.pumpUsedMs(now) <= b.pumpWindowBudgetMs + 50, "TEST budget: repeated TESTs cannot exceed the window budget");
+    CHECK(on < 8 * 2000, "TEST budget: later tests were cut short by the budget");
+  }
+
+  {
+    OutputGuard g(10000, 20000);
+    bool pump, valve;
+    unsigned long now = 0;
+    for (int i = 0; i < 60 && !g.faulted(); i++) {  // 9 s on, 1 s off: never continuous > 12 s
+      for (int k = 0; k < 900; k++, now += 10) { pump = valve = true; g.apply(pump, valve, now); }
+      pump = false; valve = true; g.apply(pump, valve, now); now += 1000;
+    }
+    CHECK(g.faulted(), "guard: cumulative pump time past the window budget + 2 s faults even with off gaps");
+    pump = valve = true; g.apply(pump, valve, now);
+    CHECK(!pump && !valve, "guard: cumulative fault forces both outputs off");
   }
 
   printf("\n%s (%d failure%s)\n", failures ? "FAILED" : "ALL PASSED", failures,

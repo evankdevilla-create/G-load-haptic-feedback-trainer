@@ -14,5 +14,8 @@ export interface PostState {
 export function gToPost(g: number, s: PostState): number | null {
   if (s.killed) return null;
   if (s.panic || !s.running || s.stalled) return PAUSED_G;
-  return g;
+  // The g-server rejects anything outside 0..12 (a rejected post would go stale and
+  // vent the cuff), and negative G is baseline to the firmware anyway: clamp here.
+  if (!Number.isFinite(g)) return null;
+  return Math.min(12, Math.max(0, g));
 }

@@ -28,7 +28,12 @@ static unsigned long run(Trainer& t, unsigned long now, unsigned long ms, float 
 }
 
 int main() {
-  TrainerConfig cfg;  // inflate 8 s, vent 4 s, cap 10 s
+  // Old-style fast timings with NO preload, so the original behaviour tests stay valid.
+  TrainerConfig cfg;
+  cfg.inflateMs = 8000;
+  cfg.ventMs = 4000;
+  cfg.pumpMaxRunMs = 10000;
+  cfg.preloadMs = 0;
 
   {
     Trainer t(cfg);
@@ -126,6 +131,65 @@ int main() {
     t.handleLine("STOP", now);
     t.update(now + 10);
     CHECK(!t.pump() && !t.valveClosed(), "STOP vents immediately");
+  }
+
+  // ---- Preload: pump to a comfortable baseline first, then follow G from there ----
+  {
+    TrainerConfig p = cfg;
+    p.preloadMs = 5000;  // 5 s of an 8 s inflate = 0.625 fill baseline
+    Trainer t(p);
+    bool bad = false;
+    unsigned long now = run(t, 1000, 7000, 1.0f, &bad);  // level flight from a cold start
+    CHECK(t.fillEstimate() > 0.60f && t.fillEstimate() < 0.66f, "preload: 1 G pumps up to the baseline first");
+    CHECK(t.currentMode() == MODE_HOLD && t.valveClosed() && !t.pump(), "preload: holds at the baseline (valve closed, pump off)");
+    now = run(t, now, 4000, 6.0f, &bad);
+    CHECK(t.fillEstimate() > 0.99f, "preload: 6 G tops up to full from the baseline");
+    now = run(t, now, 4000, 1.0f, &bad);
+    CHECK(t.fillEstimate() > 0.58f && t.fillEstimate() < 0.68f && t.valveClosed(),
+          "preload: back at 1 G it vents only down to the baseline, not empty");
+    CHECK(!bad, "preload: pump never runs with valve open");
+  }
+
+  {
+    TrainerConfig p = cfg;
+    p.preloadMs = 5000;
+    Trainer t(p);
+    unsigned long now = run(t, 1000, 7000, 1.0f);
+    now = run(t, now, 600, -1);  // signal lost
+    CHECK(!t.pump() && !t.valveClosed(), "preload: dead-man still vents (valve open)");
+    now = run(t, now, 4500, -1);
+    CHECK(t.fillEstimate() == 0.0f, "preload: dead-man vents all the way to empty");
+    now = run(t, now, 7000, 1.0f);
+    CHECK(t.fillEstimate() > 0.60f && t.fillEstimate() < 0.66f, "preload: re-preps after the signal returns");
+  }
+
+  {
+    TrainerConfig p = cfg;
+    p.preloadMs = 5000;
+    Trainer t(p);
+    run(t, 1000, 7000, 0.0f);  // dead sim feed reading 0 G
+    CHECK(t.fillEstimate() > 0.60f && t.fillEstimate() < 0.66f, "preload: G below 1 never goes below the baseline");
+  }
+
+  {
+    TrainerConfig p = cfg;
+    p.preloadMs = 12000;  // longer than inflateMs: clamped to full, never exceeds 1.0
+    Trainer t(p);
+    run(t, 1000, 12000, 1.0f);
+    CHECK(t.fillEstimate() <= 1.0f && t.target() <= 1.0f, "preload: a preload longer than inflateMs is clamped");
+  }
+
+  {
+    TrainerConfig real;  // the real defaults measured by 01: 30 s to firm, 25 s preload, 35 s cap
+    CHECK(real.inflateMs == 30000 && real.ventMs == 5000 && real.pumpMaxRunMs == 35000 && real.preloadMs == 25000,
+          "defaults match 01's on-leg measurements");
+    Trainer t(real);
+    bool bad = false;
+    unsigned long now = run(t, 1000, 26000, 1.0f, &bad);
+    CHECK(t.fillEstimate() > 0.80f && t.fillEstimate() < 0.87f && !t.lockedOut(), "real defaults: about 25 s preps to the baseline");
+    now = run(t, now, 7000, 6.0f, &bad);
+    CHECK(t.fillEstimate() > 0.99f && !t.lockedOut(), "real defaults: top-up to full stays under the pump cap");
+    CHECK(!bad, "real defaults: pump never runs with valve open");
   }
 
   {

@@ -29,7 +29,7 @@ export const DEMO_ROUTE: Route = {
     headingDeg: 0, // due north
   },
   legs: [
-    { kind: "level", seconds: 6, label: "Wings level - cuff empty, baseline 1 G" },
+    { kind: "level", seconds: 6, label: "Wings level - cuff at preload, baseline 1 G" },
     { kind: "turn", seconds: 8, g: 2, dir: "right", label: "2 G turn onto the range" },
     { kind: "level", seconds: 4, label: "Roll out" },
     { kind: "turn", seconds: 7, g: 3, dir: "left", label: "3 G turn, reversing" },

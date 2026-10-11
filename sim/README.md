@@ -65,7 +65,7 @@ must not stay inflated. The chain handles it:
 4. The firmware's dead-man timer times out and vents the cuff.
 
 Pausing the sim is different and deliberate: it keeps posting a steady 1.0 G, so
-the cuff empties but the link stays visibly up.
+the cuff drops to its preload baseline (1 G) but the link stays visibly up. Only the dead-man (K, X, or a dead tab) empties it fully.
 
 ## The flight model
 

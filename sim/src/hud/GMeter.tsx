@@ -1,26 +1,25 @@
 /**
- * The G meter, and what the cuff is doing about it.
- *
- * The lower bar is the useful part for this project: it mirrors the mapping in
- * the firmware (1 G = empty, about 6 G = full), so you can see the squeeze the
- * wearer should be feeling at that instant, not just the number.
+ * The G readout: one big number and a bar. The tick marks where the cuff is
+ * full (see `firmware/g_trainer/trainer_logic.h`), so you can see when more pull
+ * stops adding squeeze.
  */
 
 /** Must match `firmware/g_trainer/trainer_logic.h`. 1 G empty, 6 G full. */
 export const CUFF_EMPTY_G = 1;
 export const CUFF_FULL_G = 6;
 
+/** Scale of the bar. The pilot can pull to SCALE_MAX_G. */
+const SCALE_MIN_G = -1;
+const SCALE_MAX_G = 10;
+const TICKS = [-1, 1, 3, 6, 10];
+
 export function cuffFill(g: number): number {
   const fill = (g - CUFF_EMPTY_G) / (CUFF_FULL_G - CUFF_EMPTY_G);
   return Math.max(0, Math.min(1, fill));
 }
 
-function bandColour(g: number): string {
-  if (g < 0.5) return "var(--warn)"; // unloaded or negative
-  if (g < 2.5) return "var(--hud)";
-  if (g < 4.5) return "#ffe08a";
-  return "var(--alarm)";
-}
+const toFrac = (g: number) =>
+  (Math.max(SCALE_MIN_G, Math.min(SCALE_MAX_G, g)) - SCALE_MIN_G) / (SCALE_MAX_G - SCALE_MIN_G);
 
 export function GMeter({
   g,
@@ -31,50 +30,26 @@ export function GMeter({
   commanded: number;
   limited: boolean;
 }) {
-  const fill = cuffFill(g);
-  const colour = bandColour(g);
-  // The scale runs -1 to 9 G, matching what the firmware will accept.
-  const toPct = (value: number) => ((Math.max(-1, Math.min(9, value)) + 1) / 10) * 100;
-
+  const over = g > CUFF_FULL_G;
   return (
     <div className="gmeter">
-      <div className="gmeter-head">
-        <span className="label">G</span>
-        <span className="gvalue" style={{ color: colour }}>
-          {g.toFixed(2)}
-        </span>
+      <div className="gvalue" data-over={over}>
+        {g.toFixed(1)}
+        <span className="gunit">G</span>
       </div>
-
-      {/* Actual G against the scale, with a tick for what the route asked for. */}
-      <div className="gscale">
-        <div className="gscale-track">
-          <div
-            className="gscale-fill"
-            style={{ width: `${toPct(g)}%`, background: colour }}
-          />
-          <div className="gscale-zero" style={{ left: `${toPct(1)}%` }} />
-          <div className="gscale-cmd" style={{ left: `${toPct(commanded)}%` }} />
-        </div>
-        <div className="gscale-marks">
-          <span>-1</span>
-          <span>1</span>
-          <span>3</span>
-          <span>6</span>
-          <span>9</span>
-        </div>
+      <div className="gbar">
+        <div className="gbar-fill" data-over={over} style={{ transform: `scaleX(${toFrac(g)})` }} />
+        <div className="gbar-full" style={{ left: `${toFrac(CUFF_FULL_G) * 100}%` }} />
+        <div className="gbar-cmd" style={{ left: `${toFrac(commanded) * 100}%` }} />
       </div>
-
-      {/* What the cuff should be doing right now. */}
-      <div className="cuff">
-        <span className="label">
-          CUFF {Math.round(fill * 100)}%
-        </span>
-        <div className="cuff-track">
-          <div className="cuff-fill" style={{ width: `${fill * 100}%` }} />
-        </div>
+      <div className="gticks">
+        {TICKS.map((t) => (
+          <span key={t} style={{ left: `${toFrac(t) * 100}%` }}>
+            {t}
+          </span>
+        ))}
       </div>
-
-      {limited && <div className="warn">LIFT LIMITED - too slow for {commanded.toFixed(1)} G</div>}
+      {limited && <div className="gwarn">too slow for {commanded.toFixed(1)} G</div>}
     </div>
   );
 }

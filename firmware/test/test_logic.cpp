@@ -181,7 +181,7 @@ int main() {
 
   {
     TrainerConfig real;  // the real defaults measured by 01: 30 s to firm, 25 s preload, 35 s cap
-    CHECK(real.inflateMs == 30000 && real.ventMs == 5000 && real.pumpMaxRunMs == 35000 && real.preloadMs == 25000,
+    CHECK(real.inflateMs == 30000 && real.ventMs == 1200 && real.pumpMaxRunMs == 35000 && real.preloadMs == 25000,
           "defaults match 01's on-leg measurements");
     Trainer t(real);
     bool bad = false;
@@ -190,6 +190,12 @@ int main() {
     now = run(t, now, 7000, 6.0f, &bad);
     CHECK(t.fillEstimate() > 0.99f && !t.lockedOut(), "real defaults: top-up to full stays under the pump cap");
     CHECK(!bad, "real defaults: pump never runs with valve open");
+
+    // 01 measured the vent on the rig: baseline -> flat in 1 s, so 6 G -> 1 G only
+    // needs ~0.2 s of open valve (full to baseline is 17% of the 1.2 s full vent).
+    now = run(t, now, 500, 1.0f, &bad);
+    CHECK(t.fillEstimate() > 0.80f && t.fillEstimate() < 0.87f, "real defaults: back to the baseline after 0.5 s, no overshoot");
+    CHECK(t.currentMode() == MODE_HOLD, "real defaults: holds (valve shut) at the baseline once vented");
   }
 
   {

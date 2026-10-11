@@ -4,10 +4,12 @@
 // (see firmware/test/). The .ino file only reads serial, feeds lines in here,
 // calls update() every loop, and copies pump()/valveClosed() to the relays.
 //
-// Hardware assumption: the vent solenoid is NORMALLY OPEN.
-//   valve unpowered = open   = cuff vents  (fail-safe)
-//   valve powered   = closed = cuff holds / can inflate
-// So "everything off" is always the safe state.
+// Hardware assumption (corrected 2026-10-11): the vent solenoid is NORMALLY CLOSED
+// and is wired through its relay's NC contact, so at the RELAY level:
+//   valve relay off = NC contact closed = valve powered   = open   = cuff vents (fail-safe)
+//   valve relay on  = contact open      = valve unpowered = closed = cuff holds / can inflate
+// valveClosed() below means "valve relay on". So "everything off" is still the safe
+// state, as long as the valve's own battery pack is connected and charged.
 
 #pragma once
 
@@ -17,7 +19,7 @@
 struct TrainerConfig {
   // --- Measured by handoff 01 on the leg (2026-10-10, hand-timed). Re-tune per person. ---
   unsigned long inflateMs = 30000;  // pump time, empty -> comfortably firm
-  unsigned long ventMs = 5000;      // vent time, firm -> empty (include the slow tail)
+  unsigned long ventMs = 1200;      // vent time, firm -> empty; measured 1 s from the preload baseline (/0.83)
 
   // Never run the pump longer than this in one go. Must be longer than
   // inflateMs or the cuff can never reach full (~15% over is plenty).

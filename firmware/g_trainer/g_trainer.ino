@@ -18,8 +18,8 @@
 #include "trainer_logic.h"
 
 // ---- Wiring (record any change in docs/wiring.md) ----
-const uint8_t PIN_PUMP = 7;   // relay IN1
-const uint8_t PIN_VALVE = 8;  // relay IN2
+const uint8_t PIN_PUMP = 8;   // relay IN2 (the valve is on relay 1 / IN1 since the two-pack rewire)
+const uint8_t PIN_VALVE = 7;  // relay IN1
 // Most cheap relay boards switch ON when the input is LOW. If yours clicks
 // on at power-up and off when it should be on, set this to false.
 const bool RELAY_ACTIVE_LOW = true;

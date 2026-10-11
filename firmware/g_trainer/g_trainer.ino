@@ -9,6 +9,8 @@
 //   TEST     inflate 2 s, then vent 2 s (hardware check, no laptop script needed)
 //   STOP     vent now; the next G: line resumes
 //   STATUS   print one status line
+//   VENTMS:n vent time in ms, 500 to 10000 (tuning; not saved over a reset)
+//   CLEAR    clear a FAULT (pump ran past its cap; outputs stay off until then)
 //
 // Safety: no valid G line for 500 ms -> vent. Pump has a hard run-time cap.
 // Pump never runs with the valve open. Watchdog resets a hung board, and a
@@ -25,6 +27,7 @@ const uint8_t PIN_VALVE = 7;  // relay IN1
 const bool RELAY_ACTIVE_LOW = true;
 
 Trainer trainer;
+OutputGuard guard(trainer.cfg.pumpMaxRunMs, trainer.cfg.pumpWindowBudgetMs);
 
 char lineBuf[32];
 uint8_t lineLen = 0;
@@ -54,14 +57,20 @@ void printStatus(unsigned long now) {
   if (trainer.deadmanTripped(now)) Serial.print(F(" NO_SIGNAL"));
   if (trainer.lockedOut()) Serial.print(F(" PUMP_CAP"));
   if (trainer.isTesting()) Serial.print(F(" TESTING"));
+  if (guard.faulted()) Serial.print(F(" FAULT"));
+  Serial.print(F(" ventms="));
+  Serial.print(trainer.cfg.ventMs);
   Serial.println();
 }
 
 void handleLine(unsigned long now) {
+  if (guard.faulted() && lineBuf[0] == 'G') return;  // ignore G lines until CLEAR
   switch (trainer.handleLine(lineBuf, now)) {
     case LINE_TEST:   Serial.println(F("OK TEST")); break;
     case LINE_STOP:   Serial.println(F("OK STOP")); break;
     case LINE_STATUS: printStatus(now); break;
+    case LINE_VENTMS: Serial.println(F("OK VENTMS")); break;
+    case LINE_CLEAR:  guard.clear(); Serial.println(F("OK CLEAR")); break;
     default: break;  // G lines get no reply; garbage is ignored silently
   }
 }
@@ -100,7 +109,14 @@ void loop() {
   readSerial(now);
   trainer.update(now);
 
+  // The guard has the last word: a runaway pump forces both relays off (vent).
+  bool pumpOn = trainer.pump();
+  bool valveOn = trainer.valveClosed();
+  bool wasFaulted = guard.faulted();
+  guard.apply(pumpOn, valveOn, now);
+  if (guard.faulted() && !wasFaulted) Serial.println(F("FAULT pump"));
+
   // Never both: turn the pump off before opening the valve.
-  setRelay(PIN_PUMP, trainer.pump());
-  setRelay(PIN_VALVE, trainer.valveClosed());
+  setRelay(PIN_PUMP, pumpOn);
+  setRelay(PIN_VALVE, valveOn);
 }

@@ -33,13 +33,13 @@ If a change is needed in someone else's area, tell your teammate to pass it on, 
 ## Contracts: don't change these without telling both sides
 - **Serial (02 ↔ 03):** 115200 baud, `G:<float>\n` at ~20 Hz, clamped 0.0 to 9.0. No line for 500 ms → Arduino vents.
   Extra commands: `TEST`, `STOP`, `STATUS`. The bridge ignores anything the Arduino sends back.
-- **Hardware (01 ↔ 02):** pump relay on pin 7, vent valve relay on pin 8. The vent valve is **normally open**
-  (unpowered = vents). Timings live in `firmware/g_trainer/trainer_logic.h` (`inflateMs`, `ventMs`, `pumpMaxRunMs`).
+- **Hardware (01 ↔ 02):** pump relay on pin 8, vent valve relay on pin 7 (swapped 2026-10-11, valve now has its own pack). The vent valve is a **normally-closed** solenoid wired to its relay's **NC** contact
+  (relay off = valve powered = open = vents; it needs its pack B to vent). Timings live in `firmware/g_trainer/trainer_logic.h` (`inflateMs`, `ventMs`, `pumpMaxRunMs`).
 
 ## Non-negotiables
 - **Framing:** it's a "G-load haptic feedback trainer", never a G-force simulator.
 - **Safety:** every failure must end with the cuff deflated. Don't weaken the dead-man timeout, pump cap,
-  watchdog or normally-open venting. A cuff is on a person's leg.
+  watchdog or relay-off venting. A cuff is on a person's leg.
 - **Scope:** one working cuff before any stretch goal (second leg, servo, rib bladders).
 - **Honesty:** don't put unverified claims or guessed prices in the pitch or Devpost. Leave a `[blank]`.
 - Verify sim variable names against real docs or the running sim; don't guess.

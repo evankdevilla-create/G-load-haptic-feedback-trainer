@@ -17,7 +17,7 @@ Open `trainer_logic.h` and change these in `TrainerConfig`:
 | Setting | Meaning | Current value (01, hand-timed on the leg) |
 |---|---|---|
 | `inflateMs` | pump time, empty → comfortably firm | 30000 |
-| `ventMs` | vent time, firm → completely empty (include the slow tail) | 5000 |
+| `ventMs` | vent time, firm → completely empty (measured 1 s from the preload baseline, so 1.0 / 0.83) | 1200 |
 | `pumpMaxRunMs` | hard cap on one pump run; keep it above `inflateMs` | 35000 |
 | `preloadMs` | pump time from empty to the baseline held at 1 G (0 = no preload) | 25000 |
 | `gFull` | G that means a full squeeze | 6.0 |

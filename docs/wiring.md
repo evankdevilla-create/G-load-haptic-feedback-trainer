@@ -11,8 +11,10 @@ Two separate circuits. They only meet inside the relay board.
 |---|---|
 | VCC | 5V |
 | GND | GND |
-| IN1 (pump) | D7 |
-| IN2 (vent valve) | D8 |
+| IN1 (vent valve) | D7 |
+| IN2 (pump) | D8 |
+
+(Swapped from the original pump = IN1 / valve = IN2: the valve is now on relay 1 and has its own battery pack. The load-side diagram below still shows the old single-pack layout.)
 
 If the board has a JD-VCC jumper, leave it on (powers the relay coils from the Arduino's 5V; two relays is fine from USB).
 
@@ -28,10 +30,14 @@ If the board has a JD-VCC jumper, leave it on (powers the relay coils from the A
                                                     └─ Valve (−)
 ```
 
-- Use each relay's **NO** terminal (normally open *contact*), not NC. Relay off = load unpowered.
-  (Not to be confused with the *valve* being normally open: that's about air, this is about electricity.)
-- **Kill switch:** any inline on/off switch on the 12V positive lead, in the wearer's hand.
-  Because the valve is normally open, cutting 12V stops the pump *and* vents the cuff at once.
+- **Pump:** use relay 2's **NO** terminal (normally open *contact*). Relay off = pump unpowered.
+- **Valve (normally CLOSED solenoid, confirmed on the bench and by the listing):** use relay 1's **NC** terminal,
+  NOT NO. Relay off = NC contact closed = valve powered = open = cuff vents. Relay on = valve unpowered = closed =
+  holds. Wired to NO it would hold pressure whenever the system is off, which is the unsafe direction.
+  **Catch:** the valve needs its own pack (pack B) to vent. A dead or unplugged pack B traps the pressure.
+  Use fresh cells in pack B every run. USB unplugged, K, X or closing the tab still vent it.
+- **Kill switch:** not fitted. Fastest stop is unplugging the Uno's USB (relays drop out, valve powered and open,
+  pump off). Cutting pack A stops only the pump. Cutting pack B does NOT vent (it traps pressure).
 - **Flyback diodes (if you can get them):** a 1N4007 (or any 1N400x) across the pump and one across the valve,
   **stripe to the + side**. They soak up the voltage spike when the motor/coil switches off.
 - Pump polarity: red to +. If the pump hums but barely blows, check you haven't swapped it.

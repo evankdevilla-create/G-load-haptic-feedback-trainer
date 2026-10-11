@@ -17,7 +17,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEMO_ROUTE } from "./flight/route";
 import { useFlight, useSampled } from "./flight/useFlight";
 import { usePilotInput } from "./input/usePilotInput";
-import { CuffPanel } from "./hud/CuffPanel";
 import { Hud } from "./hud/Hud";
 import { Scene } from "./scene/Scene";
 import type { CameraView } from "./scene/Scene";
@@ -93,17 +92,13 @@ export function App() {
         onToggleRunning={flight.toggleRunning}
         onRestart={flight.restart}
         onToggleCuff={() => setCuffEnabled((v) => !v)}
+        cuffStatus={link.status}
+        onToggleKill={toggleKillSafely}
+        onPanicVent={panic}
+        muted={voice.muted}
+        voiceSupported={voice.supported}
+        onToggleMute={toggleMute}
       />
-      <div className="overlay">
-        <CuffPanel
-          status={link.status}
-          onToggleKill={toggleKillSafely}
-          onPanicVent={panic}
-          muted={voice.muted}
-          voiceSupported={voice.supported}
-          onToggleMute={toggleMute}
-        />
-      </div>
     </>
   );
 }

@@ -1,28 +1,18 @@
 /** What is drawn over the 3D view: the instrument cluster, the controls, and nothing else. */
 
-import type { FlightMode, FlightState } from "../flight/types";
+import type { FlightState } from "../flight/types";
 import { InstrumentCluster } from "./instruments/InstrumentCluster";
 import { Horizon } from "./Horizon";
-import { KeyHints } from "./ManualPanel";
+import { Menu } from "./Menu";
+import type { MenuProps } from "./Menu";
 
 export function Hud({
   state,
-  running,
-  mode,
-  cuffEnabled,
-  onToggleRunning,
-  onRestart,
-  onToggleCuff,
   view = "chase",
   getRenderState,
-}: {
+  ...menu
+}: MenuProps & {
   state: FlightState;
-  running: boolean;
-  mode: FlightMode;
-  cuffEnabled: boolean;
-  onToggleRunning: () => void;
-  onRestart: () => void;
-  onToggleCuff: () => void;
   view?: "cockpit" | "chase";
   /** Per-frame interpolated state for the cockpit horizon (smooth, unlike the 20 Hz `state`). */
   getRenderState?: () => FlightState;
@@ -38,15 +28,8 @@ export function Hud({
           </span>
         </div>
       )}
-      <KeyHints mode={mode} />
+      <Menu {...menu} />
       <InstrumentCluster state={state} getState={getRenderState} />
-      <div className="panel controls interactive">
-        <button onClick={onToggleRunning}>{running ? "Pause" : "Fly"}</button>
-        <button onClick={onRestart}>Restart</button>
-        <button onClick={onToggleCuff} aria-pressed={cuffEnabled}>
-          Cuff
-        </button>
-      </div>
     </div>
   );
 }

@@ -29,7 +29,7 @@ export function CuffPanel({
   const killed = status === "killed";
 
   return (
-    <section className="panel cuff-panel interactive" aria-label="Cuff controls" data-status={status}>
+    <section className="cuff-buttons" aria-label="Cuff controls" data-status={status}>
       <div className="row">
         <button
           aria-label={killed ? "Restore bridge link (K)" : "Kill bridge link (K)"}

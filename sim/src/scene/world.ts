@@ -1,43 +1,75 @@
 /**
- * The world the aeroplane flies over: a flat plate with a grid, and nothing else.
- * The grid is the only motion cue, so it has fine lines for near-field speed and
- * heavier lines every kilometre for scale.
+ * The world the aeroplane flies over: a flat, matte, cartoon-grass plane.
+ * No lines, no neon. Soft patches in a few greens give the eye something to
+ * track past, and a very faint tile seam adds scale without looking like a grid.
  */
 
 import * as THREE from "three";
 
 export const GROUND_SIZE = 60_000; // metres across
-/** One texture tile per kilometre; ten minor cells (100 m) per tile. */
-const TILE_METRES = 1000;
-const CELLS_PER_TILE = 10;
+/** One texture tile per this many metres. */
+const TILE_METRES = 800;
 
-/** Procedural grid texture: flat plate, thin minor lines, heavier tile lines. */
+/** Deterministic PRNG (mulberry32): the same ground every run. */
+function rng(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const GREENS = ["#86b85f", "#7db057", "#8fc066", "#76a850", "#82b55b"];
+
 export function makeGroundTexture(): THREE.Texture {
   const size = 1024;
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("no 2d canvas context");
+  const rand = rng(8675309);
 
-  ctx.fillStyle = "#26302b";
+  ctx.fillStyle = "#80b25a";
   ctx.fillRect(0, 0, size, size);
 
-  const cell = size / CELLS_PER_TILE;
-  ctx.strokeStyle = "#3c4a42";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  for (let i = 1; i < CELLS_PER_TILE; i++) {
-    const p = i * cell;
-    ctx.moveTo(p, 0);
-    ctx.lineTo(p, size);
-    ctx.moveTo(0, p);
-    ctx.lineTo(size, p);
-  }
-  ctx.stroke();
+  // Draw each patch nine times so anything crossing a tile edge wraps cleanly.
+  const wrapped = (draw: (ox: number, oy: number) => void) => {
+    for (let gx = -1; gx <= 1; gx++) for (let gy = -1; gy <= 1; gy++) draw(gx * size, gy * size);
+  };
 
-  // The tile edge doubles as the kilometre line when the texture repeats.
-  ctx.strokeStyle = "#6b8274";
-  ctx.lineWidth = 5;
+  // Large soft-edged patches of slightly different green.
+  for (let i = 0; i < 46; i++) {
+    const x = rand() * size;
+    const y = rand() * size;
+    const rx = 50 + rand() * 150;
+    const ry = 50 + rand() * 150;
+    const fill = GREENS[Math.floor(rand() * GREENS.length)] ?? "#80b25a";
+    wrapped((ox, oy) => {
+      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      ctx.ellipse(x + ox, y + oy, rx, ry, rand() * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+  ctx.globalAlpha = 1;
+
+  // Small darker tufts, for texture at close range.
+  for (let i = 0; i < 900; i++) {
+    const x = rand() * size;
+    const y = rand() * size;
+    const r = 2 + rand() * 5;
+    ctx.fillStyle = `rgba(52,92,40,${0.07 + rand() * 0.1})`;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // A faint seam where tiles meet: scale cue, not a grid.
+  ctx.strokeStyle = "rgba(255,255,255,0.07)";
+  ctx.lineWidth = 3;
   ctx.strokeRect(0, 0, size, size);
 
   const tex = new THREE.CanvasTexture(canvas);

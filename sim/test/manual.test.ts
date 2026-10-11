@@ -163,6 +163,11 @@ describe("manual: G limits", () => {
     }
   });
 
+  it("a hard push-over goes well past -1.5 G: there is no artificial floor there", () => {
+    const states = flyManual(manualRoute(), 6, () => ({ pitch: -1, roll: 0, throttle: 0.5 }));
+    expect(Math.min(...states.map((s) => s.g))).toBeLessThan(-4);
+  });
+
   it("never goes below PILOT_MIN_G", () => {
     const states = flyManual(manualRoute(), 30, () => ({ pitch: -1, roll: 0, throttle: 0.5 }));
     for (const s of states) expect(s.g).toBeGreaterThanOrEqual(PILOT_MIN_G - 1e-9);
@@ -212,19 +217,31 @@ describe("manual: G limits", () => {
 });
 
 describe("manual: roll", () => {
-  it("full roll input banks to 80 degrees; zero roll levels the wings", () => {
+  it("roll is a rate command: banking is limited to the roll rate and caps at 80 degrees", () => {
     const right = flyManual(manualRoute(), 5, () => ({ pitch: 0, roll: 1, throttle: 0.5 }));
     expect(deg(last(right).phi)).toBeCloseTo(80, 3);
     const left = flyManual(manualRoute(), 5, () => ({ pitch: 0, roll: -1, throttle: 0.5 }));
     expect(deg(last(left).phi)).toBeCloseTo(-80, 3);
+    // 0.2 s of full roll at 150 deg/s is 30 degrees, not a jump to the cap.
+    const brief = flyManual(manualRoute(), 0.2, () => ({ pitch: 0, roll: 1, throttle: 0.5 }));
+    expect(deg(last(brief).phi)).toBeCloseTo(30, 0);
+  });
 
-    const back = flyManual(manualRoute(), 10, (t) => ({ pitch: 0, roll: t < 3 ? 1 : 0, throttle: 0.5 }));
-    expect(last(back).phi).toBeCloseTo(0, 6);
+  it("the bank STAYS where the stick left it: no automatic return to wings level", () => {
+    const states = flyManual(manualRoute(), 10, (t) => ({ pitch: 0, roll: t < 0.3 ? 1 : 0, throttle: 0.5 }));
+    const atRelease = states[Math.round(0.35 / PHYSICS_DT)] as FlightState;
+    expect(deg(atRelease.phi)).toBeGreaterThan(30);
+    for (let i = Math.round(0.35 / PHYSICS_DT); i < states.length; i++) {
+      expect((states[i] as FlightState).phi).toBeCloseTo(atRelease.phi, 6);
+    }
+    // And the opposite stick rolls it back, which is how you level out.
+    const back = flyManual(manualRoute(), 6, (t) => ({ pitch: 0, roll: t < 0.3 ? 1 : t < 0.6 ? -1 : 0, throttle: 0.5 }));
+    expect(Math.abs(deg(last(back).phi))).toBeLessThan(1);
   });
 
   it("sustained bank flies a coordinated level turn: n = 1/cos(bank), psi rate = g tan(bank)/V", () => {
-    const roll = 0.75; // 60 degrees
-    const states = flyManual(manualRoute(), 20, () => ({ pitch: 0, roll, throttle: 0.5 }));
+    // 0.4 s of full roll at 150 deg/s is 60 degrees; then hands off, the bank holds.
+    const states = flyManual(manualRoute(), 20, (t) => ({ pitch: 0, roll: t < 0.4 ? 1 : 0, throttle: 0.5 }));
     const a = states[Math.round(10 / PHYSICS_DT)] as FlightState;
     const b = states[Math.round(15 / PHYSICS_DT)] as FlightState;
     expect(deg(b.phi)).toBeCloseTo(60, 3);

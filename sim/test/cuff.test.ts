@@ -63,3 +63,19 @@ describe("gToPost", () => {
             expect(gToPost(g, { running, stalled, panic, killed: true })).toBeNull();
   });
 });
+
+describe("gToPost clamps what it sends", () => {
+  const live = { running: true, stalled: false, killed: false, panic: false };
+  it("sends negative G as 0, so a push-over reads as baseline instead of being rejected and venting the cuff", () => {
+    expect(gToPost(-3.2, live)).toBe(0);
+    expect(gToPost(-9, live)).toBe(0);
+  });
+  it("caps G at what the server accepts and passes normal values through", () => {
+    expect(gToPost(15, live)).toBe(12);
+    expect(gToPost(4.5, live)).toBe(4.5);
+  });
+  it("sends nothing for a non-finite G", () => {
+    expect(gToPost(NaN, live)).toBeNull();
+    expect(gToPost(Infinity, live)).toBeNull();
+  });
+});

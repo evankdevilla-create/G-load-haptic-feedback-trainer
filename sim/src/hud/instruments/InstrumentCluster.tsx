@@ -27,7 +27,7 @@ export function InstrumentCluster({ state, getState }: { state: FlightState; get
 
   const label = (name: string, text: string) => `${name} ${text}`;
   return (
-    <div className="panel instruments" role="group" aria-label="Flight instruments">
+    <div className="instruments" role="group" aria-label="Flight instruments">
       <div className="ins-grid">
         <figure className="ins-g" role="group" aria-label={label("G load", `${state.g.toFixed(1)} G`)}>
           <GRing g={s.g} hold={hold.current} />

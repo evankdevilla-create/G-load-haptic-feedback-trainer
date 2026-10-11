@@ -111,12 +111,20 @@ kbd {
 }
 
 .instruments {
+  position: absolute;
   bottom: var(--s2);
-  left: 50%;
-  transform: translateX(-50%);
-  padding: var(--s1) var(--s2) var(--s1);
+  right: var(--s2);
   width: max-content;
   max-width: calc(100vw - 32px);
+}
+
+/* No panel behind the gauges, so the text under them gets a crisp dark outline
+   (not a glow) to stay readable over sky and ground. */
+.ins-grid figcaption,
+.ins-foot,
+.ins-foot .honest-note {
+  paint-order: stroke fill;
+  -webkit-text-stroke: 3px rgba(5, 6, 7, 0.92);
 }
 
 .ins-grid {
@@ -330,16 +338,12 @@ kbd {
 
 .ins-foot .honest-note {
   margin: 0;
-  text-align: center;
+  text-align: right;
 }
 
-/* controls sit bottom-right: below ~1100px the cluster lifts above them */
 @media (max-width: 1100px) {
   :root {
     --ring: min(19vh, 168px, calc((100vw - 96px) / 4.25));
-  }
-  .instruments {
-    bottom: 66px;
   }
 }
 
@@ -554,4 +558,64 @@ kbd {
   font-size: 28px;
   letter-spacing: 0.12em;
   color: #ff8d86;
+}
+
+/* --- hamburger menu, top left ------------------------------------------- */
+.menu {
+  position: absolute;
+  top: var(--s2);
+  left: var(--s2);
+}
+
+.menu-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 11px;
+}
+
+.menu-flag {
+  color: var(--alarm);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+
+.menu-panel {
+  position: static;
+  margin-top: var(--s1);
+  width: min(340px, calc(100vw - 32px));
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  display: grid;
+  gap: var(--s1);
+}
+
+.menu-panel h2 {
+  margin: var(--s1) 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.menu-panel h2:first-child {
+  margin-top: 0;
+}
+
+.cuff-buttons {
+  display: grid;
+}
+
+.menu-panel .keyhints {
+  position: static;
+  max-width: none;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  margin: 0;
 }
